@@ -1,6 +1,12 @@
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
+import {
+  formatOrderStatusLabel,
+  getOrderStatusTone,
+  getOrderTrackingState,
+  getTrackingSteps,
+} from "@/lib/order-tracking";
 import { getStripe } from "@/lib/stripe";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
 import { formatZAR } from "@/lib/utils";
@@ -27,6 +33,9 @@ export default async function CheckoutSuccessPage({
         total_cents: number;
         customer_email: string;
         payment_status: string;
+        status: string;
+        fulfillment_status: string;
+        shipping_method: string | null;
       }
     | null = null;
 
@@ -39,7 +48,7 @@ export default async function CheckoutSuccessPage({
       const supabase = createAdminClient();
       const orderResult = await supabase
         .from("orders")
-        .select("order_number, total_cents, customer_email, payment_status")
+        .select("order_number, total_cents, customer_email, payment_status, status, fulfillment_status, shipping_method")
         .eq("payment_reference", paymentIntentId)
         .maybeSingle();
 
@@ -63,6 +72,7 @@ export default async function CheckoutSuccessPage({
         order = {
           ...order,
           payment_status: "paid",
+          status: "confirmed",
         };
       }
     } catch (error) {
@@ -71,6 +81,8 @@ export default async function CheckoutSuccessPage({
   }
 
   const isPaid = paymentStatus === "succeeded";
+  const tracking = order ? getOrderTrackingState(order.status, order.payment_status) : null;
+  const steps = order ? getTrackingSteps(order.status) : [];
 
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-3xl items-center px-4 py-12 sm:px-6 lg:px-8">
@@ -94,19 +106,54 @@ export default async function CheckoutSuccessPage({
 
         <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
           {order ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
-                <span>Order number</span>
-                <span className="font-semibold text-slate-950">{order.order_number}</span>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getOrderStatusTone(order.status)}`}>
+                  {formatOrderStatusLabel(order.status)}
+                </span>
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getOrderStatusTone(order.payment_status)}`}>
+                  Payment {formatOrderStatusLabel(order.payment_status)}
+                </span>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span>Total paid</span>
-                <span className="font-semibold text-slate-950">{formatZAR(order.total_cents)}</span>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <span>Order number</span>
+                  <span className="font-semibold text-slate-950">{order.order_number}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Total paid</span>
+                  <span className="font-semibold text-slate-950">{formatZAR(order.total_cents)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Receipt email</span>
+                  <span className="font-semibold text-slate-950">{order.customer_email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Delivery</span>
+                  <span className="font-semibold text-slate-950">{order.shipping_method ?? "Standard"}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-4">
-                <span>Receipt email</span>
-                <span className="font-semibold text-slate-950">{order.customer_email}</span>
-              </div>
+
+              {tracking ? (
+                <div className="rounded-2xl bg-white p-4">
+                  <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                    <span>{tracking.summary}</span>
+                    <span className="font-semibold text-slate-950">{Math.round(tracking.progressPercent)}%</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-slate-200">
+                    <div className="h-2 rounded-full bg-slate-950" style={{ width: `${tracking.progressPercent}%` }} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-5">
+                    {steps.map((step) => (
+                      <div key={step.key} className="flex items-center gap-2 text-slate-600">
+                        <span className={`h-2.5 w-2.5 rounded-full ${step.completed ? "bg-slate-950" : "bg-slate-300"}`} />
+                        <span className={step.current ? "font-semibold text-slate-950" : ""}>{step.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <p>Stripe has returned you to ShopBridge. Your order details will appear here once payment is finalised.</p>
@@ -121,10 +168,10 @@ export default async function CheckoutSuccessPage({
             Continue shopping
           </Link>
           <Link
-            href="/account"
+            href="/account#order-tracking"
             className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
           >
-            View account
+            Track this order
           </Link>
         </div>
       </div>
