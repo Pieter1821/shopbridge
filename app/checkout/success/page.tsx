@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import {
   formatOrderStatusLabel,
+  getOrderDeliveryMeta,
   getOrderStatusTone,
   getOrderTrackingState,
   getTrackingSteps,
@@ -36,6 +37,8 @@ export default async function CheckoutSuccessPage({
         status: string;
         fulfillment_status: string;
         shipping_method: string | null;
+        shipping_address: unknown;
+        created_at: string;
       }
     | null = null;
 
@@ -48,7 +51,7 @@ export default async function CheckoutSuccessPage({
       const supabase = createAdminClient();
       const orderResult = await supabase
         .from("orders")
-        .select("order_number, total_cents, customer_email, payment_status, status, fulfillment_status, shipping_method")
+        .select("order_number, total_cents, customer_email, payment_status, status, fulfillment_status, shipping_method, shipping_address, created_at")
         .eq("payment_reference", paymentIntentId)
         .maybeSingle();
 
@@ -83,6 +86,15 @@ export default async function CheckoutSuccessPage({
   const isPaid = paymentStatus === "succeeded";
   const tracking = order ? getOrderTrackingState(order.status, order.payment_status) : null;
   const steps = order ? getTrackingSteps(order.status) : [];
+  const deliveryMeta = order
+    ? getOrderDeliveryMeta({
+        orderNumber: order.order_number,
+        status: order.status,
+        shippingMethod: order.shipping_method,
+        shippingAddress: order.shipping_address,
+        createdAt: order.created_at,
+      })
+    : null;
 
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-3xl items-center px-4 py-12 sm:px-6 lg:px-8">
@@ -152,6 +164,24 @@ export default async function CheckoutSuccessPage({
                       </div>
                     ))}
                   </div>
+
+                  {deliveryMeta ? (
+                    <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 sm:grid-cols-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Courier</p>
+                        <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.courier}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking ref</p>
+                        <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.trackingReference}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Estimated delivery</p>
+                        <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.etaWindow}</p>
+                        <p className="text-xs text-slate-500">{deliveryMeta.destination}</p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

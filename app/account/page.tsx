@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import {
   formatOrderStatusLabel,
+  getOrderDeliveryMeta,
   getOrderStatusTone,
   getOrderTrackingState,
   getTrackingSteps,
@@ -18,12 +19,21 @@ type AccountOrder = {
   fulfillment_status: string;
   total_cents: number;
   shipping_method: string | null;
+  shipping_address: unknown;
   created_at: string;
   order_items: Array<{
     product_name: string;
     quantity: number;
   }> | null;
 };
+
+type AccountPageProps = {
+  searchParams?: Promise<{ tab?: string }>;
+};
+
+function buildAccountHref(tab: string) {
+  return tab === "all" ? "/account#order-tracking" : `/account?tab=${tab}#order-tracking`;
+}
 
 function formatOrderDate(value: string) {
   return new Intl.DateTimeFormat("en-ZA", {
@@ -32,8 +42,12 @@ function formatOrderDate(value: string) {
   }).format(new Date(value));
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: AccountPageProps) {
   const { userId } = await auth();
+  const rawSearchParams = searchParams ? await searchParams : {};
+  const currentTab = ["all", "active", "delivered", "cancelled"].includes(rawSearchParams?.tab ?? "all")
+    ? (rawSearchParams?.tab ?? "all")
+    : "all";
 
   let orders: AccountOrder[] = [];
 
@@ -43,7 +57,7 @@ export default async function AccountPage() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, order_number, status, payment_status, fulfillment_status, total_cents, shipping_method, created_at, order_items(product_name, quantity)",
+          "id, order_number, status, payment_status, fulfillment_status, total_cents, shipping_method, shipping_address, created_at, order_items(product_name, quantity)",
         )
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
@@ -60,6 +74,22 @@ export default async function AccountPage() {
 
   const openOrders = orders.filter((order) => !["delivered", "cancelled", "refunded"].includes(order.status)).length;
   const deliveredOrders = orders.filter((order) => order.status === "delivered").length;
+  const cancelledOrders = orders.filter((order) => ["cancelled", "refunded"].includes(order.status)).length;
+  const visibleOrders = orders.filter((order) => {
+    if (currentTab === "active") {
+      return !["delivered", "cancelled", "refunded"].includes(order.status);
+    }
+
+    if (currentTab === "delivered") {
+      return order.status === "delivered";
+    }
+
+    if (currentTab === "cancelled") {
+      return ["cancelled", "refunded"].includes(order.status);
+    }
+
+    return true;
+  });
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -87,8 +117,8 @@ export default async function AccountPage() {
               <p className="mt-2 text-3xl font-black text-slate-950">{deliveredOrders}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Order history</p>
-              <p className="mt-2 text-3xl font-black text-slate-950">{orders.length}</p>
+              <p className="text-sm text-slate-500">Cancelled / refunded</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{cancelledOrders}</p>
             </div>
           </div>
 
@@ -112,9 +142,41 @@ export default async function AccountPage() {
 
             {orders.length > 0 ? (
               <div className="mt-6 space-y-4">
-                {orders.map((order) => {
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: "all", label: `All (${orders.length})` },
+                    { key: "active", label: `Active (${openOrders})` },
+                    { key: "delivered", label: `Delivered (${deliveredOrders})` },
+                    { key: "cancelled", label: `Cancelled (${cancelledOrders})` },
+                  ].map((tab) => {
+                    const active = currentTab === tab.key;
+
+                    return (
+                      <Link
+                        key={tab.key}
+                        href={buildAccountHref(tab.key)}
+                        className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                          active
+                            ? "bg-slate-950 text-white"
+                            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {tab.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {visibleOrders.map((order) => {
                   const tracking = getOrderTrackingState(order.status, order.payment_status);
                   const steps = getTrackingSteps(order.status);
+                  const deliveryMeta = getOrderDeliveryMeta({
+                    orderNumber: order.order_number,
+                    status: order.status,
+                    shippingMethod: order.shipping_method,
+                    shippingAddress: order.shipping_address,
+                    createdAt: order.created_at,
+                  });
                   const isArchived = ["delivered", "cancelled", "refunded"].includes(order.status);
 
                   return (
@@ -171,10 +233,32 @@ export default async function AccountPage() {
                             </div>
                           ))}
                         </div>
+
+                        <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 sm:grid-cols-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Courier</p>
+                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.courier}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking ref</p>
+                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.trackingReference}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Estimated delivery</p>
+                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.etaWindow}</p>
+                            <p className="text-xs text-slate-500">{deliveryMeta.destination}</p>
+                          </div>
+                        </div>
                       </div>
                     </article>
                   );
                 })}
+
+                {visibleOrders.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                    No orders match this section yet.
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
