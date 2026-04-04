@@ -106,8 +106,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           <ul className="mt-6 space-y-3 text-sm text-slate-600">
             <li>• Prices are displayed in ZAR.</li>
-            <li>• Cart items persist locally for a smoother checkout flow.</li>
-            <li>• Product content is loaded directly from your Supabase store.</li>
+            <li>• Secure Stripe payment options appear at checkout.</li>
+            <li>• Product content is loaded directly from your live catalogue.</li>
           </ul>
 
           <div className="mt-6 flex flex-wrap gap-3">

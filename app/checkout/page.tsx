@@ -1,8 +1,16 @@
 "use client";
 
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
+import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
+import {
+  DELIVERY_OPTIONS,
+  getDeliveryOption,
+  type DeliveryOptionId,
+} from "@/lib/checkout";
 import {
   calculateTotalIncludingVatCents,
   calculateVatCents,
@@ -10,11 +18,47 @@ import {
 } from "@/lib/utils";
 import { useCartStore } from "@/store/cart-store";
 
-const deliveryOptions = [
-  "Standard delivery · 2–4 business days",
-  "Express delivery · 1–2 business days",
-  "Cape Town same-day courier on selected drops",
-];
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+const provinces = [
+  "Gauteng",
+  "Western Cape",
+  "KwaZulu-Natal",
+  "Eastern Cape",
+  "Free State",
+  "Limpopo",
+  "Mpumalanga",
+  "Northern Cape",
+  "North West",
+] as const;
+
+type CheckoutCustomer = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  deliveryMethod: DeliveryOptionId;
+};
+
+const initialCustomer: CheckoutCustomer = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  line1: "",
+  line2: "",
+  city: "",
+  province: provinces[0],
+  postalCode: "",
+  deliveryMethod: "standard",
+};
 
 function useHydrated() {
   return useSyncExternalStore(
@@ -25,11 +69,97 @@ function useHydrated() {
 }
 
 export default function CheckoutPage() {
+  const items = useCartStore((state) => state.items);
   const subtotal = useCartStore((state) => state.totalCents());
   const itemCount = useCartStore((state) => state.itemCount());
   const hydrated = useHydrated();
+
+  const [customer, setCustomer] = useState<CheckoutCustomer>(initialCustomer);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
+
+  const deliveryOption = getDeliveryOption(customer.deliveryMethod);
+  const shippingCents = deliveryOption.amountCents;
   const vat = calculateVatCents(subtotal);
-  const total = calculateTotalIncludingVatCents(subtotal);
+  const total = calculateTotalIncludingVatCents(subtotal) + shippingCents;
+
+  const isCustomerReady = Boolean(
+    customer.firstName &&
+      customer.lastName &&
+      customer.email &&
+      customer.phone &&
+      customer.line1 &&
+      customer.city &&
+      customer.province &&
+      customer.postalCode,
+  );
+
+  function updateCustomerField<K extends keyof CheckoutCustomer>(
+    field: K,
+    value: CheckoutCustomer[K],
+  ) {
+    setCustomer((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setClientSecret(null);
+    setOrderNumber(null);
+    setCheckoutError(null);
+  }
+
+  async function handlePreparePayment() {
+    if (!hydrated || itemCount === 0) {
+      setCheckoutError("Your cart is empty. Add products before continuing to payment.");
+      return;
+    }
+
+    if (!isCustomerReady) {
+      setCheckoutError("Please complete your contact and delivery details first.");
+      return;
+    }
+
+    setIsPreparingPayment(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch("/api/stripe/payment-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          customer,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        clientSecret?: string;
+        orderNumber?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.clientSecret) {
+        throw new Error(payload.error ?? "Unable to initialise the Stripe payment form.");
+      }
+
+      setClientSecret(payload.clientSecret);
+      setOrderNumber(payload.orderNumber ?? null);
+    } catch (error) {
+      setCheckoutError(
+        error instanceof Error
+          ? error.message
+          : "Unable to initialise the Stripe payment form.",
+      );
+    } finally {
+      setIsPreparingPayment(false);
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -38,8 +168,12 @@ export default function CheckoutPage() {
           Checkout
         </p>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-          Fast, secure, and ready for payment
+          Secure checkout, powered by Stripe
         </h1>
+        <p className="mt-2 max-w-3xl text-slate-600">
+          Enter your delivery details, review the final amount including VAT, and pay
+          securely with card, Apple Pay, Google Pay, and other supported methods.
+        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -47,22 +181,74 @@ export default function CheckoutPage() {
           <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-950">Contact details</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="First name" />
-              <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Last name" />
-              <input className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Email address" />
-              <input className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Mobile number" />
+              <input
+                value={customer.firstName}
+                onChange={(event) => updateCustomerField("firstName", event.target.value)}
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="First name"
+              />
+              <input
+                value={customer.lastName}
+                onChange={(event) => updateCustomerField("lastName", event.target.value)}
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Last name"
+              />
+              <input
+                type="email"
+                value={customer.email}
+                onChange={(event) => updateCustomerField("email", event.target.value)}
+                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Email address"
+              />
+              <input
+                type="tel"
+                value={customer.phone}
+                onChange={(event) => updateCustomerField("phone", event.target.value)}
+                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Mobile number"
+              />
             </div>
           </section>
 
           <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-950">Delivery address</h2>
             <div className="mt-4 grid gap-3">
-              <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Street address" />
-              <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Apartment, suite, etc. (optional)" />
+              <input
+                value={customer.line1}
+                onChange={(event) => updateCustomerField("line1", event.target.value)}
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Street address"
+              />
+              <input
+                value={customer.line2}
+                onChange={(event) => updateCustomerField("line2", event.target.value)}
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                placeholder="Apartment, suite, etc. (optional)"
+              />
               <div className="grid gap-3 sm:grid-cols-3">
-                <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="City" />
-                <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Province" />
-                <input className="rounded-full border border-slate-300 px-4 py-3 text-sm" placeholder="Postal code" />
+                <input
+                  value={customer.city}
+                  onChange={(event) => updateCustomerField("city", event.target.value)}
+                  className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                  placeholder="City"
+                />
+                <select
+                  value={customer.province}
+                  onChange={(event) => updateCustomerField("province", event.target.value)}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-3 text-sm"
+                >
+                  {provinces.map((province) => (
+                    <option key={province} value={province}>
+                      {province}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={customer.postalCode}
+                  onChange={(event) => updateCustomerField("postalCode", event.target.value)}
+                  className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                  placeholder="Postal code"
+                />
               </div>
             </div>
           </section>
@@ -70,14 +256,58 @@ export default function CheckoutPage() {
           <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-950">Delivery method</h2>
             <div className="mt-4 space-y-3">
-              {deliveryOptions.map((option) => (
-                <label key={option} className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
-                  <input type="radio" name="delivery" className="h-4 w-4" />
-                  <span>{option}</span>
+              {DELIVERY_OPTIONS.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                >
+                  <span className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="delivery"
+                      checked={customer.deliveryMethod === option.id}
+                      onChange={() => updateCustomerField("deliveryMethod", option.id)}
+                      className="h-4 w-4"
+                    />
+                    <span>{option.label}</span>
+                  </span>
+                  <span className="font-semibold text-slate-950">
+                    {option.amountCents === 0 ? "Free" : formatZAR(option.amountCents)}
+                  </span>
                 </label>
               ))}
             </div>
           </section>
+
+          {clientSecret ? (
+            <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-950">Payment method</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Stripe now securely displays the payment methods available for this device,
+                browser, and test setup.
+              </p>
+
+              {stripePromise ? (
+                <div className="mt-4">
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: "stripe",
+                      },
+                    }}
+                  >
+                    <StripePaymentForm totalLabel={formatZAR(total)} />
+                  </Elements>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Add your Stripe test publishable key to enable the payment form.
+                </div>
+              )}
+            </section>
+          ) : null}
         </div>
 
         <aside className="h-fit rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -85,6 +315,20 @@ export default function CheckoutPage() {
           <p className="mt-1 text-sm text-slate-500">
             {hydrated ? `${itemCount} item${itemCount === 1 ? "" : "s"} in your cart` : "Loading your cart..."}
           </p>
+
+          {hydrated && items.length > 0 ? (
+            <div className="mt-4 space-y-2 border-b border-slate-200 pb-4 text-sm text-slate-600">
+              {items.map((item) => (
+                <div key={item.productId} className="flex items-center justify-between gap-4">
+                  <span>
+                    {item.name} × {item.quantity}
+                  </span>
+                  <span>{formatZAR(item.priceCents * item.quantity)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <div className="mt-4 space-y-3 text-sm text-slate-600">
             <div className="flex items-center justify-between">
               <span>Subtotal</span>
@@ -96,7 +340,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex items-center justify-between">
               <span>Delivery</span>
-              <span>Selected at checkout</span>
+              <span>{hydrated ? (shippingCents === 0 ? "Free" : formatZAR(shippingCents)) : "—"}</span>
             </div>
             <div className="flex items-center justify-between border-t border-slate-200 pt-3 font-semibold text-slate-950">
               <span>Total</span>
@@ -104,21 +348,42 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {hydrated && itemCount === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-              Your cart is empty. Add a few products before checkout.
-              <Link href="/products" className="mt-3 inline-flex font-semibold text-slate-950 underline underline-offset-4">
-                Browse products
-              </Link>
+          {orderNumber ? (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              Order {orderNumber} is ready for payment confirmation.
             </div>
           ) : null}
 
-          <button
-            disabled={!hydrated || itemCount === 0}
-            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Continue to payment
-          </button>
+          {checkoutError ? (
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {checkoutError}
+            </div>
+          ) : null}
+
+          {hydrated && itemCount === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+              Your cart is empty. Add a few products before checkout.
+              <Link
+                href="/products"
+                className="mt-3 inline-flex font-semibold text-slate-950 underline underline-offset-4"
+              >
+                Browse products
+              </Link>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePreparePayment}
+              disabled={!hydrated || itemCount === 0 || !isCustomerReady || isPreparingPayment}
+              className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPreparingPayment
+                ? "Preparing Stripe payment..."
+                : clientSecret
+                  ? "Refresh payment details"
+                  : "Continue to payment"}
+            </button>
+          )}
         </aside>
       </div>
     </div>

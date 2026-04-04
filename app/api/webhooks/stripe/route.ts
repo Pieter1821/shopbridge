@@ -37,7 +37,7 @@ async function upsertPaymentStatus(reference: string, status: "paid" | "failed",
   }
 }
 
-async function markOrderPaid(reference: string, payload: unknown) {
+async function markOrderPaid(reference: string, amountCents: number, payload: unknown) {
   const supabase = createAdminClient();
 
   await supabase
@@ -50,7 +50,7 @@ async function markOrderPaid(reference: string, payload: unknown) {
     })
     .eq("payment_reference", reference);
 
-  await upsertPaymentStatus(reference, "paid", 0, payload);
+  await upsertPaymentStatus(reference, "paid", amountCents, payload);
 }
 
 async function markOrderFailed(reference: string, amountCents: number, payload: unknown) {
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
-        await markOrderPaid(paymentIntent.id, paymentIntent);
+        await markOrderPaid(paymentIntent.id, paymentIntent.amount_received || paymentIntent.amount, paymentIntent);
         break;
       }
       case "payment_intent.payment_failed": {

@@ -207,8 +207,14 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Stripe payment intent creation failed", error);
+
+    const message =
+      error instanceof Error && error.message.includes("STRIPE_SECRET_KEY")
+        ? "Stripe is not fully configured yet. Add your test Stripe keys to `.env.local` and restart `npm run dev`."
+        : "Stripe could not initialise the payment. Check your test keys and try again.";
+
     return NextResponse.json(
-      { error: "Stripe could not initialise the payment. Check your test keys and try again." },
+      { error: message },
       { status: 500 },
     );
   }
