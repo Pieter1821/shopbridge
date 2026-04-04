@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
+import { useCartStockSync } from "@/hooks/use-cart-stock-sync";
 import {
   calculateTotalIncludingVatCents,
   calculateVatCents,
@@ -23,10 +24,13 @@ export function CartSummary() {
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearCart = useCartStore((state) => state.clearCart);
+  const stockNotice = useCartStore((state) => state.stockNotice);
   const subtotal = useCartStore((state) => state.totalCents());
   const vat = calculateVatCents(subtotal);
   const total = calculateTotalIncludingVatCents(subtotal);
   const hydrated = useHydrated();
+
+  useCartStockSync(hydrated);
 
   if (!hydrated) {
     return (
@@ -66,12 +70,20 @@ export function CartSummary() {
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{item.brand}</p>
                 <h2 className="text-lg font-semibold text-slate-950">{item.name}</h2>
                 <p className="text-sm text-slate-600">{formatZAR(item.priceCents)} each</p>
+                {typeof item.stockQuantity === "number" ? (
+                  <p className="mt-1 text-xs text-amber-700">
+                    {item.stockQuantity === 0
+                      ? "Currently sold out"
+                      : `Live stock: ${item.stockQuantity} available`}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex items-center gap-3">
                 <input
                   type="number"
                   min={1}
+                  max={item.stockQuantity ?? undefined}
                   value={item.quantity}
                   onChange={(event) =>
                     updateQuantity(item.productId, Number(event.target.value) || 1)
@@ -109,6 +121,12 @@ export function CartSummary() {
           <span>Total</span>
           <span>{formatZAR(total)}</span>
         </div>
+
+        {stockNotice ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {stockNotice}
+          </div>
+        ) : null}
 
         <div className="mt-5 space-y-3">
           <Link

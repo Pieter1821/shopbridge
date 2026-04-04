@@ -3,9 +3,10 @@
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
+import { useCartStockSync } from "@/hooks/use-cart-stock-sync";
 import {
   DELIVERY_OPTIONS,
   getDeliveryOption,
@@ -60,6 +61,8 @@ const initialCustomer: CheckoutCustomer = {
   deliveryMethod: "standard",
 };
 
+const CHECKOUT_DETAILS_STORAGE_KEY = "shopbridge-checkout-details";
+
 function useHydrated() {
   return useSyncExternalStore(
     () => () => undefined,
@@ -72,13 +75,17 @@ export default function CheckoutPage() {
   const items = useCartStore((state) => state.items);
   const subtotal = useCartStore((state) => state.totalCents());
   const itemCount = useCartStore((state) => state.itemCount());
+  const stockNotice = useCartStore((state) => state.stockNotice);
   const hydrated = useHydrated();
+
+  useCartStockSync(hydrated);
 
   const [customer, setCustomer] = useState<CheckoutCustomer>(initialCustomer);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isPreparingPayment, setIsPreparingPayment] = useState(false);
+  const [hasLoadedSavedDetails, setHasLoadedSavedDetails] = useState(false);
 
   const deliveryOption = getDeliveryOption(customer.deliveryMethod);
   const shippingCents = deliveryOption.amountCents;
@@ -95,6 +102,51 @@ export default function CheckoutPage() {
       customer.province &&
       customer.postalCode,
   );
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    try {
+      const saved = window.localStorage.getItem(CHECKOUT_DETAILS_STORAGE_KEY);
+
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<CheckoutCustomer>;
+        setCustomer((current) => ({
+          ...current,
+          ...parsed,
+          province:
+            typeof parsed.province === "string" && provinces.includes(parsed.province as (typeof provinces)[number])
+              ? (parsed.province as (typeof provinces)[number])
+              : current.province,
+          deliveryMethod:
+            parsed.deliveryMethod === "express" ||
+            parsed.deliveryMethod === "same-day" ||
+            parsed.deliveryMethod === "standard"
+              ? parsed.deliveryMethod
+              : current.deliveryMethod,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to restore checkout details", error);
+    } finally {
+      setHasLoadedSavedDetails(true);
+    }
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !hasLoadedSavedDetails) {
+      return;
+    }
+
+    window.localStorage.setItem(CHECKOUT_DETAILS_STORAGE_KEY, JSON.stringify(customer));
+  }, [customer, hasLoadedSavedDetails, hydrated]);
+
+  useEffect(() => {
+    setClientSecret(null);
+    setOrderNumber(null);
+  }, [items]);
 
   function updateCustomerField<K extends keyof CheckoutCustomer>(
     field: K,
@@ -321,6 +373,12 @@ export default function CheckoutPage() {
           {orderNumber ? (
             <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               Order {orderNumber} is ready for payment confirmation.
+            </div>
+          ) : null}
+
+          {stockNotice ? (
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {stockNotice}
             </div>
           ) : null}
 
