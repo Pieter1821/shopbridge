@@ -126,6 +126,8 @@ export function NavBar() {
                 );
               })}
             </nav>
+
+            {hasClerkKeys ? <AuthControls mobile /> : null}
           </div>
         </div>
       </div>
