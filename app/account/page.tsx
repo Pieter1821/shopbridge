@@ -46,8 +46,7 @@ export default async function AccountPage() {
           "id, order_number, status, payment_status, fulfillment_status, total_cents, shipping_method, created_at, order_items(product_name, quantity)",
         )
         .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(8);
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Failed to load account orders", error.message);
@@ -88,7 +87,7 @@ export default async function AccountPage() {
               <p className="mt-2 text-3xl font-black text-slate-950">{deliveredOrders}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">Recent orders</p>
+              <p className="text-sm text-slate-500">Order history</p>
               <p className="mt-2 text-3xl font-black text-slate-950">{orders.length}</p>
             </div>
           </div>
@@ -100,7 +99,7 @@ export default async function AccountPage() {
                   Order tracking
                 </p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-                  Live order updates
+                  Order history & live tracking
                 </h2>
               </div>
               <Link
@@ -116,6 +115,7 @@ export default async function AccountPage() {
                 {orders.map((order) => {
                   const tracking = getOrderTrackingState(order.status, order.payment_status);
                   const steps = getTrackingSteps(order.status);
+                  const isArchived = ["delivered", "cancelled", "refunded"].includes(order.status);
 
                   return (
                     <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
@@ -140,6 +140,9 @@ export default async function AccountPage() {
                             </span>
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getOrderStatusTone(order.payment_status)}`}>
                               Payment {formatOrderStatusLabel(order.payment_status)}
+                            </span>
+                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                              {isArchived ? "History" : "Active"}
                             </span>
                           </div>
                           <p className="mt-2 text-lg font-black text-slate-950">{formatZAR(order.total_cents)}</p>
@@ -175,7 +178,7 @@ export default async function AccountPage() {
               </div>
             ) : (
               <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                No orders yet. Once you checkout, your payment and delivery progress will appear here automatically.
+                No orders yet. Once you checkout, your full order history and delivery progress will appear here automatically.
               </div>
             )}
           </section>
