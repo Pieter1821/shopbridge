@@ -16,6 +16,13 @@ export type TrackingPaymentStatus =
   | "partially_refunded"
   | "refunded";
 
+type ShippingAddressLike = {
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string | null;
+};
+
 const progressStages = [
   { key: "pending", label: "Received" },
   { key: "confirmed", label: "Confirmed" },
@@ -23,6 +30,54 @@ const progressStages = [
   { key: "shipped", label: "Shipped" },
   { key: "delivered", label: "Delivered" },
 ] as const;
+
+function normalizeShippingAddress(input: unknown): ShippingAddressLike {
+  if (!input || typeof input !== "object") {
+    return {
+      city: null,
+      province: null,
+      postalCode: null,
+      country: null,
+    };
+  }
+
+  const address = input as Record<string, unknown>;
+
+  return {
+    city: typeof address.city === "string" ? address.city : null,
+    province: typeof address.province === "string" ? address.province : null,
+    postalCode:
+      typeof address.postal_code === "string"
+        ? address.postal_code
+        : typeof address.postalCode === "string"
+          ? address.postalCode
+          : null,
+    country: typeof address.country === "string" ? address.country : null,
+  };
+}
+
+function addBusinessDays(date: Date, days: number) {
+  const result = new Date(date);
+
+  while (days > 0) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+
+    if (day !== 0 && day !== 6) {
+      days -= 1;
+    }
+  }
+
+  return result;
+}
+
+function formatEtaDate(date: Date) {
+  return new Intl.DateTimeFormat("en-ZA", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
 
 export function formatOrderStatusLabel(status: string) {
   return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -109,4 +164,68 @@ export function getTrackingSteps(status: string) {
     completed: activeIndex >= index,
     current: activeIndex === index,
   }));
+}
+
+export function getOrderDeliveryMeta({
+  orderNumber,
+  status,
+  shippingMethod,
+  shippingAddress,
+  createdAt,
+}: {
+  orderNumber: string;
+  status: string;
+  shippingMethod?: string | null;
+  shippingAddress?: unknown;
+  createdAt: string;
+}) {
+  const address = normalizeShippingAddress(shippingAddress);
+  const province = (address.province ?? "").toLowerCase();
+  const city = (address.city ?? "").toLowerCase();
+  const normalizedMethod = (shippingMethod ?? "standard").toLowerCase();
+  const isCapeTownSameDay = normalizedMethod.includes("same-day") && city.includes("cape town");
+  const isExpress = normalizedMethod.includes("express");
+  const isMetroProvince = ["gauteng", "western cape", "kwazulu-natal"].includes(province);
+
+  const courier = isCapeTownSameDay
+    ? "ShopBridge Same-Day Courier"
+    : isExpress
+      ? "The Courier Guy Express"
+      : isMetroProvince
+        ? "The Courier Guy Standard"
+        : "Pargo Regional";
+
+  const [minDays, maxDays] = isCapeTownSameDay
+    ? [0, 0]
+    : isExpress
+      ? isMetroProvince
+        ? [1, 2]
+        : [2, 3]
+      : isMetroProvince
+        ? [2, 4]
+        : [3, 5];
+
+  const created = new Date(createdAt);
+  const etaStart = addBusinessDays(created, minDays);
+  const etaEnd = addBusinessDays(created, maxDays);
+  const etaWindow =
+    status === "delivered"
+      ? "Delivered"
+      : status === "cancelled" || status === "refunded"
+        ? "No ETA available"
+        : minDays === maxDays
+          ? formatEtaDate(etaEnd)
+          : `${formatEtaDate(etaStart)} – ${formatEtaDate(etaEnd)}`;
+
+  const cleanOrderNumber = orderNumber.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  const trackingReference = ["shipped", "delivered"].includes(status)
+    ? `TRK-${cleanOrderNumber.slice(-8)}`
+    : "Available once shipped";
+
+  return {
+    courier,
+    trackingReference,
+    etaWindow,
+    destination: [address.city, address.province].filter(Boolean).join(", ") || "South Africa",
+  };
 }
