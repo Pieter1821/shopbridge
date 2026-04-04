@@ -278,36 +278,6 @@ export default function CheckoutPage() {
               ))}
             </div>
           </section>
-
-          {clientSecret ? (
-            <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">Payment method</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Stripe now securely displays the payment methods available for this device,
-                browser, and test setup.
-              </p>
-
-              {stripePromise ? (
-                <div className="mt-4">
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: "stripe",
-                      },
-                    }}
-                  >
-                    <StripePaymentForm totalLabel={formatZAR(total)} />
-                  </Elements>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Add your Stripe test publishable key to enable the payment form.
-                </div>
-              )}
-            </section>
-          ) : null}
         </div>
 
         <aside className="h-fit rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -384,6 +354,36 @@ export default function CheckoutPage() {
                   : "Continue to payment"}
             </button>
           )}
+
+          {clientSecret ? (
+            <section className="mt-6 border-t border-slate-200 pt-6">
+              <h2 className="text-lg font-semibold text-slate-950">Payment method</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Stripe now securely displays the payment methods available for this device,
+                browser, and test setup.
+              </p>
+
+              {stripePromise ? (
+                <div className="mt-4">
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: "stripe",
+                      },
+                    }}
+                  >
+                    <StripePaymentForm totalLabel={formatZAR(total)} />
+                  </Elements>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Add your Stripe test publishable key to enable the payment form.
+                </div>
+              )}
+            </section>
+          ) : null}
         </aside>
       </div>
     </div>
