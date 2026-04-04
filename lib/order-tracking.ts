@@ -166,6 +166,21 @@ export function getTrackingSteps(status: string) {
   }));
 }
 
+export function canCancelOrder(status: string, paymentStatus?: string | null) {
+  const normalizedStatus = status as TrackingOrderStatus;
+  const normalizedPaymentStatus = paymentStatus as TrackingPaymentStatus | null | undefined;
+
+  if (["shipped", "delivered", "cancelled", "refunded"].includes(normalizedStatus)) {
+    return false;
+  }
+
+  if (normalizedPaymentStatus === "refunded") {
+    return false;
+  }
+
+  return ["pending", "confirmed", "processing", "packed"].includes(normalizedStatus);
+}
+
 export function getOrderDeliveryMeta({
   orderNumber,
   status,

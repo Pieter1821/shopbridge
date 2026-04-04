@@ -1,7 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 
+import { cancelOrderAction } from "./actions";
+
 import {
+  canCancelOrder,
   formatOrderStatusLabel,
   getOrderDeliveryMeta,
   getOrderStatusTone,
@@ -122,8 +125,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             </div>
           </div>
 
-          <section id="order-tracking" className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex items-start justify-between gap-4">
+          <section id="order-tracking" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700">
                   Order tracking
@@ -131,6 +134,9 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
                   Order history & live tracking
                 </h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                  Review each order at a glance, cancel eligible orders before shipment, and keep an eye on ETA and courier details.
+                </p>
               </div>
               <Link
                 href="/products"
@@ -178,77 +184,108 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     createdAt: order.created_at,
                   });
                   const isArchived = ["delivered", "cancelled", "refunded"].includes(order.status);
+                  const isCancellable = canCancelOrder(order.status, order.payment_status);
 
                   return (
-                    <article key={order.id} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-                            {order.order_number}
-                          </p>
-                          <h3 className="mt-2 text-lg font-bold text-slate-950">
-                            {order.order_items?.map((item) => `${item.product_name} × ${item.quantity}`).join(", ") || "Order items"}
-                          </h3>
-                          <p className="mt-1 text-sm text-slate-600">
-                            Placed {formatOrderDate(order.created_at)}
-                            {order.shipping_method ? ` • ${order.shipping_method}` : ""}
-                          </p>
-                        </div>
+                    <article key={order.id} className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+                              {order.order_number}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Placed {formatOrderDate(order.created_at)}
+                              {order.shipping_method ? ` • ${order.shipping_method}` : ""}
+                            </p>
+                          </div>
 
-                        <div className="text-left sm:text-right">
-                          <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+                          <div className="flex flex-wrap gap-2">
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getOrderStatusTone(order.status)}`}>
                               {formatOrderStatusLabel(order.status)}
                             </span>
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getOrderStatusTone(order.payment_status)}`}>
                               Payment {formatOrderStatusLabel(order.payment_status)}
                             </span>
-                            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
                               {isArchived ? "History" : "Active"}
                             </span>
                           </div>
-                          <p className="mt-2 text-lg font-black text-slate-950">{formatZAR(order.total_cents)}</p>
-                        </div>
-                      </div>
 
-                      <div className="mt-4 rounded-2xl bg-white p-4">
-                        <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-                          <span>{tracking.summary}</span>
-                          <span className="font-semibold text-slate-950">{Math.round(tracking.progressPercent)}%</span>
-                        </div>
-                        <div className="mt-3 h-2 rounded-full bg-slate-200">
-                          <div
-                            className="h-2 rounded-full bg-slate-950 transition-all"
-                            style={{ width: `${tracking.progressPercent}%` }}
-                          />
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-5">
-                          {steps.map((step) => (
-                            <div key={step.key} className="flex items-center gap-2 text-slate-600">
-                              <span
-                                className={`h-2.5 w-2.5 rounded-full ${step.completed ? "bg-slate-950" : "bg-slate-300"}`}
-                              />
-                              <span className={step.current ? "font-semibold text-slate-950" : ""}>{step.label}</span>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                              Order items
+                            </p>
+                            <div className="mt-3 space-y-2">
+                              {order.order_items?.map((item) => (
+                                <div key={`${order.id}-${item.product_name}`} className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                                  <span>{item.product_name}</span>
+                                  <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-700">× {item.quantity}</span>
+                                </div>
+                              )) ?? <p className="text-sm text-slate-600">Order items</p>}
                             </div>
-                          ))}
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                              <span>{tracking.summary}</span>
+                              <span className="font-semibold text-slate-950">{Math.round(tracking.progressPercent)}%</span>
+                            </div>
+                            <div className="mt-3 h-2 rounded-full bg-slate-200">
+                              <div
+                                className="h-2 rounded-full bg-slate-950 transition-all"
+                                style={{ width: `${tracking.progressPercent}%` }}
+                              />
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-5">
+                              {steps.map((step) => (
+                                <div key={step.key} className="flex items-center gap-2 text-slate-600">
+                                  <span
+                                    className={`h-2.5 w-2.5 rounded-full ${step.completed ? "bg-slate-950" : "bg-slate-300"}`}
+                                  />
+                                  <span className={step.current ? "font-semibold text-slate-950" : ""}>{step.label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 sm:grid-cols-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Courier</p>
-                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.courier}</p>
+                        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Order summary</p>
+                          <p className="mt-2 text-2xl font-black text-slate-950">{formatZAR(order.total_cents)}</p>
+
+                          <div className="mt-4 space-y-3 text-sm text-slate-700">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Courier</p>
+                              <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.courier}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking ref</p>
+                              <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.trackingReference}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Estimated delivery</p>
+                              <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.etaWindow}</p>
+                              <p className="text-xs text-slate-500">{deliveryMeta.destination}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracking ref</p>
-                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.trackingReference}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Estimated delivery</p>
-                            <p className="mt-1 font-semibold text-slate-950">{deliveryMeta.etaWindow}</p>
-                            <p className="text-xs text-slate-500">{deliveryMeta.destination}</p>
-                          </div>
-                        </div>
+
+                          {isCancellable ? (
+                            <form action={cancelOrderAction} className="mt-5 space-y-2 border-t border-slate-200 pt-4">
+                              <input type="hidden" name="order_id" value={order.id} />
+                              <button
+                                type="submit"
+                                className="inline-flex w-full items-center justify-center rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                              >
+                                Cancel order
+                              </button>
+                              <p className="text-xs text-slate-500">
+                                Available until the order moves to shipped.
+                              </p>
+                            </form>
+                          ) : null}
+                        </aside>
                       </div>
                     </article>
                   );
