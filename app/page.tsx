@@ -1,65 +1,132 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRight, ShieldCheck, Truck, Wallet } from "lucide-react";
 
-export default function Home() {
+import { ProductGrid } from "@/components/products/ProductGrid";
+import { getCategories, getFeaturedProducts } from "@/lib/shop";
+
+export const revalidate = 60;
+
+const valueProps = [
+  {
+    title: "Quality checked",
+    description: "Every product is selected for trusted quality and a polished shopping experience.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Nationwide delivery",
+    description: "Fast fulfilment across Johannesburg, Cape Town, Durban, and beyond.",
+    icon: Truck,
+  },
+  {
+    title: "Flexible checkout",
+    description: "A clean buying experience built for modern South African shoppers.",
+    icon: Wallet,
+  },
+];
+
+export default async function Home() {
+  const [categories, featuredProducts] = await Promise.all([
+    getCategories(),
+    getFeaturedProducts(),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="overflow-hidden rounded-4xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-300">
+            Curated finds, clean essentials
           </p>
+          <h1 className="mt-3 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
+            South African shopping with a sharper point of view.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base text-slate-200 sm:text-lg">
+            ShopBridge brings together fashion, footwear, accessories, and everyday finds
+            with a fast, modern checkout experience for local shoppers.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950"
+            >
+              Shop the latest <ArrowUpRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/checkout"
+              className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white"
+            >
+              Go to checkout
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="space-y-4">
+          {valueProps.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="rounded-2xl bg-emerald-50 p-2 text-emerald-700">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-950">{item.title}</h2>
+                    <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </main>
+      </section>
+
+      {categories.length ? (
+        <section className="mt-8 grid gap-4 md:grid-cols-3">
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              href={`/products?category=${encodeURIComponent(category.slug)}`}
+              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <p className="text-sm font-semibold text-slate-950">{category.name}</p>
+              <p className="mt-2 text-sm text-slate-600">
+                {category.description ?? "Explore this collection on ShopBridge."}
+              </p>
+            </Link>
+          ))}
+        </section>
+      ) : null}
+
+      <section className="mt-10">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700">
+              Featured now
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              Curated drops
+            </h2>
+          </div>
+          <Link
+            href="/products"
+            className="text-sm font-semibold text-slate-700 hover:text-slate-950"
+          >
+            View all →
+          </Link>
+        </div>
+
+        {featuredProducts.length ? (
+          <ProductGrid products={featuredProducts} />
+        ) : (
+          <div className="rounded-4xl border border-dashed border-slate-300 bg-white p-8 text-center">
+            <h3 className="text-xl font-semibold text-slate-950">The first drop is almost live</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Fresh products will appear here automatically as soon as they are published in Supabase.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
