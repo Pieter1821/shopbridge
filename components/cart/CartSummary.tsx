@@ -34,7 +34,7 @@ export function CartSummary() {
 
   if (!hydrated) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
         Loading cart...
       </div>
     );
@@ -42,9 +42,9 @@ export function CartSummary() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
-        <h2 className="text-lg font-semibold text-slate-950">Your cart is empty</h2>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Your cart is empty</h2>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           Browse the catalogue and add something you love to get started.
         </p>
         <Link
@@ -63,15 +63,15 @@ export function CartSummary() {
         {items.map((item) => (
           <div
             key={item.productId}
-            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{item.brand}</p>
-                <h2 className="text-lg font-semibold text-slate-950">{item.name}</h2>
-                <p className="text-sm text-slate-600">{formatZAR(item.priceCents)} each</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{item.brand}</p>
+                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{item.name}</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{formatZAR(item.priceCents)} each</p>
                 {typeof item.stockQuantity === "number" ? (
-                  <p className="mt-1 text-xs text-amber-700">
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                     {item.stockQuantity === 0
                       ? "Currently sold out"
                       : `Live stock: ${item.stockQuantity} available`}
@@ -88,12 +88,12 @@ export function CartSummary() {
                   onChange={(event) =>
                     updateQuantity(item.productId, Number(event.target.value) || 1)
                   }
-                  className="w-20 rounded-full border border-slate-300 px-3 py-2 text-sm"
+                  className="w-20 rounded-full border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
                 <button
                   type="button"
                   onClick={() => removeItem(item.productId)}
-                  className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                  className="rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:text-slate-200"
                 >
                   Remove
                 </button>
@@ -103,9 +103,9 @@ export function CartSummary() {
         ))}
       </div>
 
-      <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-950">Order summary</h2>
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+      <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Order summary</h2>
+        <div className="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
           <span>Subtotal</span>
           <span>{formatZAR(subtotal)}</span>
         </div>
@@ -117,13 +117,13 @@ export function CartSummary() {
           <span>Shipping</span>
           <span>Calculated at checkout</span>
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-base font-semibold text-slate-950">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-base font-semibold text-slate-950 dark:border-slate-700 dark:text-white">
           <span>Total</span>
           <span>{formatZAR(total)}</span>
         </div>
 
         {stockNotice ? (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
             {stockNotice}
           </div>
         ) : null}
@@ -138,7 +138,7 @@ export function CartSummary() {
           <button
             type="button"
             onClick={clearCart}
-            className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700"
+            className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
           >
             Clear cart
           </button>

@@ -20,6 +20,7 @@ export type StorefrontProduct = {
   price_cents: number;
   compare_at_price_cents: number | null;
   stock_quantity: number;
+  low_stock_threshold: number | null;
   images: string[] | null;
   tags: string[] | null;
   is_featured: boolean | null;
@@ -38,6 +39,7 @@ const productSelect = `
   price_cents,
   compare_at_price_cents,
   stock_quantity,
+  low_stock_threshold,
   images,
   tags,
   is_featured,

@@ -99,7 +99,7 @@ export default async function CheckoutSuccessPage({
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-3xl items-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm sm:p-10">
-        <div className="flex items-center gap-3 text-emerald-700">
+        <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="h-8 w-8" />
           <p className="text-sm font-semibold uppercase tracking-[0.25em]">
             {isPaid ? "Payment confirmed" : "Payment update"}

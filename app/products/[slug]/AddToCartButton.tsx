@@ -33,7 +33,7 @@ export function AddToCartButton({ product }: { product: StorefrontProduct }) {
         setAdded(true);
         window.setTimeout(() => setAdded(false), 1200);
       }}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
     >
       <ShoppingBag className="h-4 w-4" />
       {isSoldOut

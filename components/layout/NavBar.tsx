@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 
 import { AuthControls } from "./AuthControls";
 import { CartIndicator } from "./CartIndicator";
+import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
   { href: "/", label: "Home" },
@@ -15,14 +16,14 @@ export function NavBar() {
   const hasClerkKeys = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex flex-col leading-none">
-            <span className="text-lg font-black tracking-tight text-slate-950">
+            <span className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
               ShopBridge
             </span>
-            <span className="text-xs text-slate-500">South African online shopping</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">South African online shopping</span>
           </Link>
 
           <nav className="hidden items-center gap-4 md:flex">
@@ -30,7 +31,7 @@ export function NavBar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-slate-600 transition hover:text-slate-950"
+                className="text-sm font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
               >
                 {link.label}
               </Link>
@@ -39,16 +40,17 @@ export function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <form
             action="/search"
-            className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 md:flex"
+            className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 md:flex dark:border-slate-700 dark:bg-slate-900"
           >
             <Search className="h-4 w-4 text-slate-400" />
             <input
               name="q"
               type="search"
               placeholder="Search products"
-              className="w-40 bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="w-40 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </form>
 

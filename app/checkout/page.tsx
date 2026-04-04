@@ -216,13 +216,13 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700">
+        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-400">
           Checkout
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 dark:text-white">
           Secure checkout, powered by Stripe
         </h1>
-        <p className="mt-2 max-w-3xl text-slate-600">
+        <p className="mt-2 max-w-3xl text-slate-600 dark:text-slate-300">
           Enter your delivery details, review the final amount including VAT, and pay
           securely with card, Apple Pay, Google Pay, and other supported methods.
         </p>
@@ -230,64 +230,64 @@ export default function CheckoutPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
-          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-950">Contact details</h2>
+          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Contact details</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <input
                 value={customer.firstName}
                 onChange={(event) => updateCustomerField("firstName", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="First name"
               />
               <input
                 value={customer.lastName}
                 onChange={(event) => updateCustomerField("lastName", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Last name"
               />
               <input
                 type="email"
                 value={customer.email}
                 onChange={(event) => updateCustomerField("email", event.target.value)}
-                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Email address"
               />
               <input
                 type="tel"
                 value={customer.phone}
                 onChange={(event) => updateCustomerField("phone", event.target.value)}
-                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Mobile number"
               />
             </div>
           </section>
 
-          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-950">Delivery address</h2>
+          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Delivery address</h2>
             <div className="mt-4 grid gap-3">
               <input
                 value={customer.line1}
                 onChange={(event) => updateCustomerField("line1", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Street address"
               />
               <input
                 value={customer.line2}
                 onChange={(event) => updateCustomerField("line2", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="Apartment, suite, etc. (optional)"
               />
               <div className="grid gap-3 sm:grid-cols-3">
                 <input
                   value={customer.city}
                   onChange={(event) => updateCustomerField("city", event.target.value)}
-                  className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                  className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                   placeholder="City"
                 />
                 <select
                   value={customer.province}
                   onChange={(event) => updateCustomerField("province", event.target.value)}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-3 text-sm"
+                  className="rounded-full border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 >
                   {provinces.map((province) => (
                     <option key={province} value={province}>
@@ -298,20 +298,20 @@ export default function CheckoutPage() {
                 <input
                   value={customer.postalCode}
                   onChange={(event) => updateCustomerField("postalCode", event.target.value)}
-                  className="rounded-full border border-slate-300 px-4 py-3 text-sm"
+                  className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                   placeholder="Postal code"
                 />
               </div>
             </div>
           </section>
 
-          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-950">Delivery method</h2>
+          <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Delivery method</h2>
             <div className="mt-4 space-y-3">
               {DELIVERY_OPTIONS.map((option) => (
                 <label
                   key={option.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200"
                 >
                   <span className="flex items-center gap-3">
                     <input
@@ -323,7 +323,7 @@ export default function CheckoutPage() {
                     />
                     <span>{option.label}</span>
                   </span>
-                  <span className="font-semibold text-slate-950">
+                  <span className="font-semibold text-slate-950 dark:text-white">
                     {option.amountCents === 0 ? "Free" : formatZAR(option.amountCents)}
                   </span>
                 </label>
@@ -332,14 +332,14 @@ export default function CheckoutPage() {
           </section>
         </div>
 
-        <aside className="h-fit rounded-4xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-950">Order summary</h2>
-          <p className="mt-1 text-sm text-slate-500">
+        <aside className="h-fit rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Order summary</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
             {hydrated ? `${itemCount} item${itemCount === 1 ? "" : "s"} in your cart` : "Loading your cart..."}
           </p>
 
           {hydrated && items.length > 0 ? (
-            <div className="mt-4 space-y-2 border-b border-slate-200 pb-4 text-sm text-slate-600">
+            <div className="mt-4 space-y-2 border-b border-slate-200 pb-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
               {items.map((item) => (
                 <div key={item.productId} className="flex items-center justify-between gap-4">
                   <span>
@@ -351,7 +351,7 @@ export default function CheckoutPage() {
             </div>
           ) : null}
 
-          <div className="mt-4 space-y-3 text-sm text-slate-600">
+          <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <div className="flex items-center justify-between">
               <span>Subtotal</span>
               <span>{hydrated ? formatZAR(subtotal) : "—"}</span>
@@ -364,36 +364,36 @@ export default function CheckoutPage() {
               <span>Delivery</span>
               <span>{hydrated ? (shippingCents === 0 ? "Free" : formatZAR(shippingCents)) : "—"}</span>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3 font-semibold text-slate-950">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-3 font-semibold text-slate-950 dark:border-slate-700 dark:text-white">
               <span>Total</span>
               <span>{hydrated ? formatZAR(total) : "—"}</span>
             </div>
           </div>
 
           {orderNumber ? (
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
               Order {orderNumber} is ready for payment confirmation.
             </div>
           ) : null}
 
           {stockNotice ? (
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
               {stockNotice}
             </div>
           ) : null}
 
           {checkoutError ? (
-            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
               {checkoutError}
             </div>
           ) : null}
 
           {hydrated && itemCount === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               Your cart is empty. Add a few products before checkout.
               <Link
                 href="/products"
-                className="mt-3 inline-flex font-semibold text-slate-950 underline underline-offset-4"
+                className="mt-3 inline-flex font-semibold text-slate-950 underline underline-offset-4 dark:text-white"
               >
                 Browse products
               </Link>
@@ -414,9 +414,9 @@ export default function CheckoutPage() {
           )}
 
           {clientSecret ? (
-            <section className="mt-6 border-t border-slate-200 pt-6">
-              <h2 className="text-lg font-semibold text-slate-950">Payment method</h2>
-              <p className="mt-2 text-sm text-slate-600">
+            <section className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Payment method</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 Stripe now securely displays the payment methods available for this device,
                 browser, and test setup.
               </p>
@@ -436,7 +436,7 @@ export default function CheckoutPage() {
                   </Elements>
                 </div>
               ) : (
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   Add your Stripe test publishable key to enable the payment form.
                 </div>
               )}

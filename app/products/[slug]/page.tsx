@@ -44,13 +44,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <Link
         href="/products"
-        className="text-sm font-medium text-slate-500 hover:text-slate-900"
+        className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
       >
         ← Back to products
       </Link>
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-xl">
+        <div className="overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
           <div className="relative aspect-4/5 bg-slate-100">
             {product.images?.[0] ? (
               <Image
@@ -91,20 +91,20 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </div>
         </div>
 
-        <div className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-slate-500">Live product details</p>
+              <p className="text-sm text-slate-500 dark:text-slate-300">Live product details</p>
               <PriceDisplay
                 className="mt-2"
                 priceCents={product.price_cents}
                 compareAtPriceCents={product.compare_at_price_cents ?? undefined}
               />
             </div>
-            <StockBadge stock={product.stock_quantity} />
+            <StockBadge stock={product.stock_quantity} lowStockThreshold={product.low_stock_threshold} />
           </div>
 
-          <ul className="mt-6 space-y-3 text-sm text-slate-600">
+          <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <li>• Prices are displayed in ZAR.</li>
             <li>• Secure Stripe payment options appear at checkout.</li>
             <li>• Product content is loaded directly from your live catalogue.</li>
@@ -114,7 +114,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <AddToCartButton product={product} />
             <Link
               href="/cart"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
             >
               View cart
             </Link>
