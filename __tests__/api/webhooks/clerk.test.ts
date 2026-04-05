@@ -3,12 +3,12 @@ import { POST } from "@/app/api/webhooks/clerk/route";
 
 vi.mock("@/lib/supabase/admin");
 
-let mockHeaders: any;
+let mockHeaders: Map<string, string>;
 vi.mock("next/headers", () => ({
   headers: async () => mockHeaders,
 }));
 
-let mockWebhookVerify: any;
+let mockWebhookVerify: () => unknown;
 vi.mock("svix", () => ({
   Webhook: class {
     constructor() {}
