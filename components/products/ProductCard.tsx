@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
-import { StockBadge } from "@/components/shared/StockBadge";
+import { ProductAvailabilityBadge } from "@/components/shared/ProductAvailabilityBadge";
 import type { StorefrontProduct } from "@/lib/shop";
 
 export function ProductCard({ product }: { product: StorefrontProduct }) {
@@ -61,7 +61,11 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
               compareAtPriceCents={product.compare_at_price_cents ?? undefined}
             />
           </div>
-          <StockBadge stock={product.stock_quantity} lowStockThreshold={product.low_stock_threshold} />
+          <ProductAvailabilityBadge
+            productId={product.id}
+            stock={product.stock_quantity}
+            lowStockThreshold={product.low_stock_threshold}
+          />
         </div>
         <Link
           href={`/products/${product.slug}`}

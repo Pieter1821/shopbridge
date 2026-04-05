@@ -4,7 +4,7 @@ import { Loader2, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { StockBadge } from "@/components/shared/StockBadge";
+import { ProductAvailabilityBadge } from "@/components/shared/ProductAvailabilityBadge";
 import type { StorefrontProduct } from "@/lib/shop";
 import { cn, formatZAR } from "@/lib/utils";
 
@@ -147,7 +147,8 @@ export function LiveSearchBox({ mobile = false, onNavigate }: LiveSearchBoxProps
                       {product.brand ?? product.category?.name ?? "ShopBridge"}
                     </p>
                     <div className="mt-2">
-                      <StockBadge
+                      <ProductAvailabilityBadge
+                        productId={product.id}
                         stock={product.stock_quantity}
                         lowStockThreshold={product.low_stock_threshold}
                       />

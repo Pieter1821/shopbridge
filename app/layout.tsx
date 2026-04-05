@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
 
+import { CartStockSyncBridge } from "@/components/cart/CartStockSyncBridge";
 import { Footer } from "@/components/layout/Footer";
 import { NavBar } from "@/components/layout/NavBar";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ export default function RootLayout({
 
   const shell = (
     <div className="flex min-h-screen flex-col">
+      <CartStockSyncBridge />
       <NavBar />
       <main className="flex-1">{children}</main>
       <Footer />

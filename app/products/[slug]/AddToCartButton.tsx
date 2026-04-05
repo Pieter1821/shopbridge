@@ -8,11 +8,16 @@ import { useCartStore } from "@/store/cart-store";
 
 export function AddToCartButton({ product }: { product: StorefrontProduct }) {
   const addItem = useCartStore((state) => state.addItem);
-  const cartQuantity = useCartStore(
-    (state) => state.items.find((item) => item.productId === product.id)?.quantity ?? 0,
+  const cartItem = useCartStore((state) =>
+    state.items.find((item) => item.productId === product.id),
   );
+  const cartQuantity = cartItem?.quantity ?? 0;
   const [added, setAdded] = useState(false);
-  const availableStock = Math.max(0, product.stock_quantity - cartQuantity);
+  const liveStock =
+    typeof cartItem?.stockQuantity === "number"
+      ? Math.max(0, cartItem.stockQuantity)
+      : Math.max(0, product.stock_quantity);
+  const availableStock = Math.max(0, liveStock - cartQuantity);
   const isSoldOut = availableStock === 0;
   const hasReachedStockLimit = cartQuantity > 0 && availableStock === 0 && product.stock_quantity > 0;
 
@@ -28,7 +33,7 @@ export function AddToCartButton({ product }: { product: StorefrontProduct }) {
           brand: product.brand ?? "ShopBridge",
           priceCents: product.price_cents,
           quantity: 1,
-          stockQuantity: product.stock_quantity,
+          stockQuantity: liveStock,
         });
 
         setAdded(true);

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cart-store";
@@ -8,14 +9,32 @@ import { useCartStore } from "@/store/cart-store";
 export function useCartStockSync(enabled = true) {
   const items = useCartStore((state) => state.items);
   const syncStock = useCartStore((state) => state.syncStock);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  const productIdsKey = useMemo(
+    () => [...new Set(items.map((item) => item.productId))].sort().join(","),
+    [items],
+  );
 
   useEffect(() => {
-    if (!enabled || items.length === 0) {
+    const supabase = createClient();
+
+    async function removeExistingChannel() {
+      if (!channelRef.current) {
+        return;
+      }
+
+      const existingChannel = channelRef.current;
+      channelRef.current = null;
+      await supabase.removeChannel(existingChannel).catch(() => undefined);
+    }
+
+    if (!enabled || !productIdsKey) {
+      void removeExistingChannel();
       return;
     }
 
-    const productIds = [...new Set(items.map((item) => item.productId))];
-    const supabase = createClient();
+    const productIds = productIdsKey.split(",").filter(Boolean);
     let isActive = true;
 
     async function refreshLiveStock() {
@@ -38,31 +57,45 @@ export function useCartStockSync(enabled = true) {
       }
     }
 
-    void refreshLiveStock();
+    void (async () => {
+      await removeExistingChannel();
 
-    const activeIds = new Set(productIds);
-    const channel = supabase
-      .channel(`cart-stock:${productIds.join(",")}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "products",
-        },
-        (payload) => {
-          const next = payload.new as { id?: string; stock_quantity?: number };
+      if (!isActive) {
+        return;
+      }
 
-          if (next.id && activeIds.has(next.id)) {
-            syncStock(next.id, Number(next.stock_quantity ?? 0));
-          }
-        },
-      )
-      .subscribe();
+      await refreshLiveStock();
+
+      if (!isActive) {
+        return;
+      }
+
+      const activeIds = new Set(productIds);
+      const channel = supabase
+        .channel(`cart-stock:${productIdsKey}:${Date.now()}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "products",
+          },
+          (payload) => {
+            const next = payload.new as { id?: string; stock_quantity?: number };
+
+            if (next.id && activeIds.has(next.id)) {
+              syncStock(next.id, Number(next.stock_quantity ?? 0));
+            }
+          },
+        )
+        .subscribe();
+
+      channelRef.current = channel;
+    })();
 
     return () => {
       isActive = false;
-      void supabase.removeChannel(channel);
+      void removeExistingChannel();
     };
-  }, [enabled, items, syncStock]);
+  }, [enabled, productIdsKey, syncStock]);
 }
