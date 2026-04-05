@@ -1,8 +1,9 @@
 "use server";
 
+import { clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-import { isCurrentUserAdmin, type ShopBridgeRole } from "@/lib/auth/current-user";
+import { getCurrentUserRoles, isCurrentUserAdmin, type ShopBridgeRole } from "@/lib/auth/current-user";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/utils";
 
@@ -41,6 +42,14 @@ async function assertAdminAccess() {
 
   if (!isAdmin) {
     throw new Error("Unauthorized admin action.");
+  }
+}
+
+async function assertUserManagementAccess() {
+  const { roles, primaryRole } = await getCurrentUserRoles();
+
+  if (!roles.includes("admin") && primaryRole !== "admin") {
+    throw new Error("Only admin users can manage staff and customer accounts.");
   }
 }
 
@@ -304,8 +313,79 @@ export async function deleteCategoryAction(formData: FormData) {
   revalidateStorefront();
 }
 
+export async function createManagedUserAction(formData: FormData) {
+  await assertUserManagementAccess();
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const temporaryPassword = String(formData.get("temporary_password") ?? "").trim();
+  const marketingOptIn = formData.get("marketing_opt_in") === "on";
+  const requestedRole = String(formData.get("role") ?? "customer").trim();
+  const role: ShopBridgeRole = requestedRole === "staff" ? "staff" : "customer";
+  const roles: ShopBridgeRole[] = role === "staff" ? ["customer", "staff"] : ["customer"];
+
+  if (!email) {
+    throw new Error("Email is required.");
+  }
+
+  if (temporaryPassword.length < 8) {
+    throw new Error("Temporary password must be at least 8 characters long.");
+  }
+
+  try {
+    const client = await clerkClient();
+    const createdUser = await client.users.createUser({
+      emailAddress: [email],
+      password: temporaryPassword,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      publicMetadata: {
+        role,
+        roles,
+      },
+    });
+
+    const primaryEmail = createdUser.emailAddresses.find(
+      (address) => address.id === createdUser.primaryEmailAddressId,
+    )?.emailAddress ?? email;
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("users").upsert({
+      id: createdUser.id,
+      email: primaryEmail,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      phone: phone || null,
+      avatar_url: createdUser.imageUrl ?? null,
+      role,
+      marketing_opt_in: marketingOptIn,
+      roles,
+    }, { onConflict: "id" });
+
+    if (error) {
+      throw new Error(`Unable to sync the new user to Supabase: ${error.message}`);
+    }
+  } catch (error) {
+    const details = error as {
+      errors?: Array<{ longMessage?: string; message?: string }>;
+      message?: string;
+    };
+
+    throw new Error(
+      details.errors?.[0]?.longMessage ??
+        details.errors?.[0]?.message ??
+        details.message ??
+        "Unable to create the user account.",
+    );
+  }
+
+  revalidatePath("/admin");
+}
+
 export async function updateUserRolesAction(formData: FormData) {
-  await assertAdminAccess();
+  await assertUserManagementAccess();
 
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "").trim();
@@ -330,6 +410,16 @@ export async function updateUserRolesAction(formData: FormData) {
     : roles.includes("staff")
       ? "staff"
       : "customer";
+
+  if (id.startsWith("user_")) {
+    const client = await clerkClient();
+    await client.users.updateUser(id, {
+      publicMetadata: {
+        role: primaryRole,
+        roles,
+      },
+    });
+  }
 
   const { error } = await supabase.from("users").update({
     role: primaryRole,

@@ -15,6 +15,7 @@ import {
   deleteProductAction,
   updateCategoryAction,
   updateProductAction,
+  createManagedUserAction,
   updateUserRolesAction,
 } from "./actions";
 
@@ -186,6 +187,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const { roles } = await getCurrentUserRoles();
   const isAdmin = roles.includes("admin") || roles.includes("staff");
+  const canManageUsers = roles.includes("admin");
 
   if (!isAdmin) {
     return (
@@ -733,8 +735,71 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <div className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-2xl font-black tracking-tight text-slate-950">User roles</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Use checkboxes to assign multiple roles. Admins automatically keep customer access. Showing the latest {users.length} of {totalUsers} synced users.
+              Create Clerk-backed staff and customer accounts, then manage synced roles from one place. Showing the latest {users.length} of {totalUsers} synced users.
             </p>
+
+            {canManageUsers ? (
+              <form action={createManagedUserAction} className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">Add a staff or customer user</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    This creates the sign-in account in Clerk and syncs the profile into Supabase immediately.
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <label className="space-y-2 text-sm font-medium text-slate-700">
+                    First name
+                    <input name="first_name" className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-slate-700">
+                    Last name
+                    <input name="last_name" className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-slate-700 md:col-span-2">
+                    Email address
+                    <input name="email" type="email" required className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-slate-700">
+                    Phone number
+                    <input name="phone" type="tel" placeholder="+2782..." className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm" />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-slate-700">
+                    Role
+                    <select name="role" defaultValue="customer" className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm">
+                      <option value="customer">Customer</option>
+                      <option value="staff">Staff</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2 text-sm font-medium text-slate-700 md:col-span-2">
+                    Temporary password
+                    <input
+                      name="temporary_password"
+                      type="password"
+                      minLength={8}
+                      required
+                      placeholder="At least 8 characters"
+                      className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+                    />
+                  </label>
+                </div>
+
+                <label className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input name="marketing_opt_in" type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                  Marketing opt-in enabled
+                </label>
+
+                <div className="mt-4">
+                  <button type="submit" className="inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    Create user account
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Only full admin users can add new staff or customer accounts.
+              </div>
+            )}
 
             <div className="mt-6 space-y-3">
               {users.map((user) => {
@@ -758,6 +823,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               type="checkbox"
                               value={role}
                               defaultChecked={roleList.includes(role)}
+                              disabled={!canManageUsers}
                               className="h-4 w-4 rounded border-slate-300"
                             />
                             {role}
@@ -770,8 +836,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
                         Primary role: {user.role ?? "customer"}
                       </span>
-                      <button type="submit" className="inline-flex rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-                        Update roles
+                      <button
+                        type="submit"
+                        disabled={!canManageUsers}
+                        className="inline-flex rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {canManageUsers ? "Update roles" : "Admin only"}
                       </button>
                     </div>
                   </form>
