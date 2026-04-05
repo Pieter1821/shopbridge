@@ -6,7 +6,7 @@ test.describe('Performance & Accessibility', () => {
 
     // Test desktop
     await page.setViewportSize({ width: 1920, height: 1080 });
-    let header = page.locator('header');
+    const header = page.locator('header');
     await expect(header).toBeVisible();
 
     // Test mobile
