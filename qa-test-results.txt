@@ -1,0 +1,105 @@
+
+> shopbridge@0.1.0 test
+> playwright test
+
+
+Running 185 tests using 8 workers
+
+[1A[2K[1/185] [chromium] › tests\homepage.spec.ts:12:7 › Homepage › should display hero section
+[1A[2K[2/185] [chromium] › tests\homepage.spec.ts:8:7 › Homepage › should load homepage
+[1A[2K[3/185] [chromium] › tests\homepage.spec.ts:53:7 › Homepage › should have correct viewport meta tag
+[1A[2K[4/185] [chromium] › tests\homepage.spec.ts:39:7 › Homepage › should load images without errors
+[1A[2K[5/185] [chromium] › tests\homepage.spec.ts:17:7 › Homepage › should have functional search
+[1A[2K[6/185] [chromium] › tests\homepage.spec.ts:31:7 › Homepage › should have working navigation
+[1A[2K[7/185] [chromium] › tests\homepage.spec.ts:58:7 › Homepage › should support dark mode toggle
+[1A[2K[8/185] [chromium] › tests\homepage.spec.ts:26:7 › Homepage › should display products section
+[1A[2K  1) [chromium] › tests\homepage.spec.ts:8:7 › Homepage › should load homepage ─────────────────────
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-load-homepage-chromium\error-context.md
+
+
+[1A[2K  2) [chromium] › tests\homepage.spec.ts:31:7 › Homepage › should have working navigation ──────────
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-have-working-navigation-chromium\error-context.md
+
+
+[1A[2K  3) [chromium] › tests\homepage.spec.ts:39:7 › Homepage › should load images without errors ───────
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-load-images-without-errors-chromium\error-context.md
+
+
+[1A[2K  4) [chromium] › tests\homepage.spec.ts:12:7 › Homepage › should display hero section ─────────────
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-display-hero-section-chromium\error-context.md
+
+
+[1A[2K  5) [chromium] › tests\homepage.spec.ts:58:7 › Homepage › should support dark mode toggle ─────────
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-support-dark-mode-toggle-chromium\error-context.md
+
+
+[1A[2K  6) [chromium] › tests\homepage.spec.ts:53:7 › Homepage › should have correct viewport meta tag ───
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\Pieter\AppData\Local\ms-playwright\chromium_headless_shell-1217\chrome-headless-shell-win64\chrome-headless-shell.exe
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results\homepage-Homepage-should-have-correct-viewport-meta-tag-chromium\error-context.md
+
+
