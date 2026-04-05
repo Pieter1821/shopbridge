@@ -1,5 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
-
+import Image from "next/image";
 import { Card, CardContent, Chip } from "@heroui/react";
 import Link from "next/link";
 
@@ -16,17 +15,21 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
 
   return (
     <Card className="group overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white/90 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.45)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_-32px_rgba(15,23,42,0.5)] dark:border-slate-800/80 dark:bg-slate-900/90 dark:shadow-[0_24px_60px_-36px_rgba(2,6,23,0.85)]">
-      <div className="relative h-56 overflow-hidden bg-slate-100">
+      <div className="relative aspect-square overflow-hidden bg-slate-100">
         {coverImage ? (
-          <img
+          <Image
             src={coverImage}
             alt={product.name}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            quality={75}
+            className="object-cover transition duration-500 group-hover:scale-[1.05]"
+            priority={false}
+            placeholder="blur"
+            blurDataURL="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect fill='%23f1f5f9' width='400' height='400'/%3E%3C/svg%3E"
           />
         ) : (
-          <div className="flex h-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-sm font-medium text-slate-500">
+          <div className="flex aspect-square items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-sm font-medium text-slate-500">
             Product image coming soon
           </div>
         )}
