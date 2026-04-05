@@ -3,10 +3,14 @@
 import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
+const StripePaymentForm = dynamic(
+  () => import("@/components/checkout/StripePaymentForm").then((mod) => ({ default: mod.StripePaymentForm })),
+  { ssr: false },
+);
 import { useCartStockSync } from "@/hooks/use-cart-stock-sync";
 import {
   DELIVERY_OPTIONS,
