@@ -17,6 +17,17 @@ export function useCartStockSync(enabled = true) {
   );
 
   useEffect(() => {
+    // Skip if Supabase is not configured (e.g., in CI without env vars)
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publicKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_SECRET_KEY;
+
+    if (!url || !publicKey) {
+      return;
+    }
+
     const supabase = createClient();
 
     async function removeExistingChannel() {
