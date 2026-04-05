@@ -276,74 +276,119 @@ export default function CheckoutPage() {
           <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Contact details</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <input
-                value={customer.firstName}
-                onChange={(event) => updateCustomerField("firstName", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="First name"
-              />
-              <input
-                value={customer.lastName}
-                onChange={(event) => updateCustomerField("lastName", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="Last name"
-              />
-              <input
-                type="email"
-                value={customer.email}
-                onChange={(event) => updateCustomerField("email", event.target.value)}
-                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="Email address"
-              />
-              <input
-                type="tel"
-                value={customer.phone}
-                onChange={(event) => updateCustomerField("phone", event.target.value)}
-                className="sm:col-span-2 rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="Mobile number"
-              />
+              <div>
+                <label htmlFor="firstName" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">First name</label>
+                <input
+                  id="firstName"
+                  value={customer.firstName}
+                  onChange={(event) => updateCustomerField("firstName", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="First name"
+                  aria-label="First name"
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Last name</label>
+                <input
+                  id="lastName"
+                  value={customer.lastName}
+                  onChange={(event) => updateCustomerField("lastName", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="Last name"
+                  aria-label="Last name"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="email" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email address</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={customer.email}
+                  onChange={(event) => updateCustomerField("email", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="Email address"
+                  aria-label="Email address"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="phone" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Mobile number</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  value={customer.phone}
+                  onChange={(event) => updateCustomerField("phone", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="Mobile number"
+                  aria-label="Mobile number"
+                />
+              </div>
             </div>
           </section>
 
           <section className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Delivery address</h2>
             <div className="mt-4 grid gap-3">
-              <input
-                value={customer.line1}
-                onChange={(event) => updateCustomerField("line1", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="Street address"
-              />
-              <input
-                value={customer.line2}
-                onChange={(event) => updateCustomerField("line2", event.target.value)}
-                className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                placeholder="Apartment, suite, etc. (optional)"
-              />
+              <div>
+                <label htmlFor="line1" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Street address</label>
+                <input
+                  id="line1"
+                  value={customer.line1}
+                  onChange={(event) => updateCustomerField("line1", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="Street address"
+                  aria-label="Street address"
+                />
+              </div>
+              <div>
+                <label htmlFor="line2" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Apartment, suite, etc. (optional)</label>
+                <input
+                  id="line2"
+                  value={customer.line2}
+                  onChange={(event) => updateCustomerField("line2", event.target.value)}
+                  className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  placeholder="Apartment, suite, etc. (optional)"
+                  aria-label="Apartment, suite, etc."
+                />
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <input
-                  value={customer.city}
-                  onChange={(event) => updateCustomerField("city", event.target.value)}
-                  className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                  placeholder="City"
-                />
-                <select
-                  value={customer.province}
-                  onChange={(event) => updateCustomerField("province", event.target.value)}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                >
-                  {provinces.map((province) => (
-                    <option key={province} value={province}>
-                      {province}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={customer.postalCode}
-                  onChange={(event) => updateCustomerField("postalCode", event.target.value)}
-                  className="rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
-                  placeholder="Postal code"
-                />
+                <div>
+                  <label htmlFor="city" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">City</label>
+                  <input
+                    id="city"
+                    value={customer.city}
+                    onChange={(event) => updateCustomerField("city", event.target.value)}
+                    className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                    placeholder="City"
+                    aria-label="City"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="province" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Province</label>
+                  <select
+                    id="province"
+                    value={customer.province}
+                    onChange={(event) => updateCustomerField("province", event.target.value)}
+                    className="w-full rounded-full border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    aria-label="Province"
+                  >
+                    {provinces.map((province) => (
+                      <option key={province} value={province}>
+                        {province}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="postalCode" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Postal code</label>
+                  <input
+                    id="postalCode"
+                    value={customer.postalCode}
+                    onChange={(event) => updateCustomerField("postalCode", event.target.value)}
+                    className="w-full rounded-full border border-slate-300 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                    placeholder="Postal code"
+                    aria-label="Postal code"
+                  />
+                </div>
               </div>
             </div>
           </section>
