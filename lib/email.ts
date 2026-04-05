@@ -2,26 +2,40 @@ import { formatZAR } from "@/lib/utils";
 
 const EMAILJS_ENDPOINT = "https://api.emailjs.com/api/v1.0/email/send";
 
+function getEnvValue(...keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
 function getSiteUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
 function getRequiredTemplateId(type: "account" | "password" | "order") {
+  const sharedTemplateId = getEnvValue("EMAILJS_TEMPLATE_ID", "EMAIL.JS_TEMPLATE_ID");
+
   if (type === "account") {
-    return process.env.EMAILJS_ACCOUNT_TEMPLATE_ID;
+    return getEnvValue("EMAILJS_ACCOUNT_TEMPLATE_ID") ?? sharedTemplateId;
   }
 
   if (type === "password") {
-    return process.env.EMAILJS_PASSWORD_TEMPLATE_ID;
+    return getEnvValue("EMAILJS_PASSWORD_TEMPLATE_ID") ?? sharedTemplateId;
   }
 
-  return process.env.EMAILJS_ORDER_TEMPLATE_ID;
+  return getEnvValue("EMAILJS_ORDER_TEMPLATE_ID") ?? sharedTemplateId;
 }
 
 function isEmailJsConfigured(templateId?: string | null) {
   return Boolean(
-    process.env.EMAILJS_SERVICE_ID &&
-      process.env.EMAILJS_PUBLIC_KEY &&
+    getEnvValue("EMAILJS_SERVICE_ID", "EMAIL.JS_SERVICE_ID") &&
+      getEnvValue("EMAILJS_PUBLIC_KEY", "EMAIL.JS_PUBLIC_KEY") &&
       templateId,
   );
 }
@@ -38,10 +52,10 @@ async function sendEmailViaEmailJs(templateId: string, templateParams: Record<st
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      service_id: process.env.EMAILJS_SERVICE_ID,
+      service_id: getEnvValue("EMAILJS_SERVICE_ID", "EMAIL.JS_SERVICE_ID"),
       template_id: templateId,
-      user_id: process.env.EMAILJS_PUBLIC_KEY,
-      accessToken: process.env.EMAILJS_PRIVATE_KEY,
+      user_id: getEnvValue("EMAILJS_PUBLIC_KEY", "EMAIL.JS_PUBLIC_KEY"),
+      accessToken: getEnvValue("EMAILJS_PRIVATE_KEY", "EMAIL.JS_PRIVATE_KEY"),
       template_params: templateParams,
     }),
     cache: "no-store",
