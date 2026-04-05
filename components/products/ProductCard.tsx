@@ -1,13 +1,15 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { Card, CardContent, Chip } from "@heroui/react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
 import { ProductAvailabilityBadge } from "@/components/shared/ProductAvailabilityBadge";
 import type { StorefrontProduct } from "@/lib/shop";
+import { normalizeRemoteImageUrl } from "@/lib/utils";
 
 export function ProductCard({ product }: { product: StorefrontProduct }) {
-  const coverImage = product.images?.[0];
+  const coverImage = normalizeRemoteImageUrl(product.images?.[0]);
   const brand = product.brand ?? "ShopBridge";
   const categoryLabel = product.category?.name ?? "Featured";
   const tags = product.tags?.slice(0, 3) ?? [];
@@ -16,12 +18,12 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
     <Card className="group overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white/90 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.45)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_-32px_rgba(15,23,42,0.5)] dark:border-slate-800/80 dark:bg-slate-900/90 dark:shadow-[0_24px_60px_-36px_rgba(2,6,23,0.85)]">
       <div className="relative h-56 overflow-hidden bg-slate-100">
         {coverImage ? (
-          <Image
+          <img
             src={coverImage}
             alt={product.name}
-            fill
-            sizes="(min-width: 1280px) 24vw, (min-width: 768px) 33vw, 100vw"
-            className="object-cover transition duration-500 group-hover:scale-[1.05]"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-sm font-medium text-slate-500">

@@ -1,11 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
+
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
 import { ProductAvailabilityBadge } from "@/components/shared/ProductAvailabilityBadge";
 import { getProductBySlug } from "@/lib/shop";
+import { normalizeRemoteImageUrl } from "@/lib/utils";
 
 import { AddToCartButton } from "./AddToCartButton";
 
@@ -39,6 +41,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const brand = product.brand ?? "ShopBridge";
   const categoryLabel = product.category?.name ?? "Products";
   const tags = product.tags?.slice(0, 4) ?? [];
+  const heroImage = normalizeRemoteImageUrl(product.images?.[0]);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -52,14 +55,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
           <div className="relative aspect-4/5 bg-slate-100">
-            {product.images?.[0] ? (
-              <Image
-                src={product.images[0]}
+            {heroImage ? (
+              <img
+                src={heroImage}
                 alt={product.name}
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-contain p-6 sm:object-cover sm:p-0"
+                loading="eager"
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-contain p-6 sm:object-cover sm:p-0"
               />
             ) : (
               <div className="flex h-full items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-sm font-medium text-slate-500">

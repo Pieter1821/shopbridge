@@ -2,10 +2,12 @@
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { redirect, unstable_rethrow } from "next/navigation";
 
 import { getCurrentUserRoles, isCurrentUserAdmin, type ShopBridgeRole } from "@/lib/auth/current-user";
+import { sendManagedUserPasswordEmail, sendManagedUserWelcomeEmail } from "@/lib/email";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
-import { slugify } from "@/lib/utils";
+import { normalizeRemoteImageUrl, slugify } from "@/lib/utils";
 
 function parseCurrencyToCents(value: FormDataEntryValue | null) {
   const amount = Number(value ?? 0);
@@ -95,12 +97,18 @@ async function resolveImageUrl({
   }
 
   const directUrl = String(url ?? "").trim();
+  const normalizedDirectUrl = normalizeRemoteImageUrl(directUrl);
+
   if (directUrl) {
-    return directUrl;
+    if (!normalizedDirectUrl) {
+      throw new Error("Please paste a direct image URL instead of a search results page.");
+    }
+
+    return normalizedDirectUrl;
   }
 
   const existingUrl = String(existing ?? "").trim();
-  return existingUrl || null;
+  return normalizeRemoteImageUrl(existingUrl);
 }
 
 function revalidateStorefront() {
@@ -108,6 +116,149 @@ function revalidateStorefront() {
   revalidatePath("/products");
   revalidatePath("/search");
   revalidatePath("/admin");
+}
+
+function redirectToAdminUserManagement(params: { success?: string; error?: string }) {
+  const searchParams = new URLSearchParams();
+
+  if (params.success) {
+    searchParams.set("userSuccess", params.success);
+  }
+
+  if (params.error) {
+    searchParams.set("userError", params.error);
+  }
+
+  const query = searchParams.toString();
+  redirect(query ? `/admin?${query}#user-management` : "/admin#user-management");
+}
+
+function getManagedRole(value: string): ShopBridgeRole {
+  if (value === "admin") {
+    return "admin";
+  }
+
+  if (value === "staff") {
+    return "staff";
+  }
+
+  return "customer";
+}
+
+function getManagedRoles(role: ShopBridgeRole): ShopBridgeRole[] {
+  if (role === "admin") {
+    return ["customer", "admin"];
+  }
+
+  if (role === "staff") {
+    return ["customer", "staff"];
+  }
+
+  return ["customer"];
+}
+
+function getActionErrorMessage(error: unknown, fallback: string) {
+  const details = error as {
+    errors?: Array<{ longMessage?: string; message?: string }>;
+    message?: string;
+  };
+
+  return (
+    details?.errors?.[0]?.longMessage ??
+    details?.errors?.[0]?.message ??
+    details?.message ??
+    fallback
+  );
+}
+
+async function syncManagedUserProfile({
+  currentId,
+  nextId,
+  email,
+  firstName,
+  lastName,
+  phone,
+  avatarUrl,
+  role,
+  marketingOptIn,
+  roles,
+}: {
+  currentId?: string | null;
+  nextId: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  role: ShopBridgeRole;
+  marketingOptIn: boolean;
+  roles: ShopBridgeRole[];
+}) {
+  const supabase = createAdminClient();
+  const payload = {
+    id: nextId,
+    email,
+    first_name: firstName || null,
+    last_name: lastName || null,
+    phone: phone || null,
+    avatar_url: avatarUrl || null,
+    role,
+    marketing_opt_in: marketingOptIn,
+    roles,
+  };
+
+  if (!currentId || currentId === nextId) {
+    const { error } = await supabase.from("users").upsert(payload, { onConflict: "id" });
+
+    if (error) {
+      throw new Error(`Unable to sync the user to Supabase: ${error.message}`);
+    }
+
+    return;
+  }
+
+  const { error: directUpdateError } = await supabase
+    .from("users")
+    .update(payload)
+    .eq("id", currentId);
+
+  if (!directUpdateError) {
+    return;
+  }
+
+  const legacyEmail = `${email}__legacy_${Date.now()}`;
+  const { error: legacyEmailError } = await supabase
+    .from("users")
+    .update({ email: legacyEmail })
+    .eq("id", currentId);
+
+  if (legacyEmailError) {
+    throw new Error(`Unable to migrate the existing user profile: ${legacyEmailError.message}`);
+  }
+
+  const { error: insertError } = await supabase.from("users").upsert(payload, { onConflict: "id" });
+
+  if (insertError) {
+    await supabase.from("users").update({ email }).eq("id", currentId);
+    throw new Error(`Unable to sync the user to Supabase: ${insertError.message}`);
+  }
+
+  const userLinkUpdates: Array<{ table: string; column: string }> = [
+    { table: "addresses", column: "user_id" },
+    { table: "carts", column: "user_id" },
+    { table: "wishlists", column: "user_id" },
+    { table: "orders", column: "user_id" },
+    { table: "order_status_history", column: "changed_by" },
+  ];
+
+  for (const link of userLinkUpdates) {
+    await supabase
+      .from(link.table)
+      .update({ [link.column]: nextId } as never)
+      .eq(link.column, currentId);
+  }
+
+  await supabase.from("users").delete().eq("id", currentId);
 }
 
 export async function createProductAction(formData: FormData) {
@@ -314,8 +465,6 @@ export async function deleteCategoryAction(formData: FormData) {
 }
 
 export async function createManagedUserAction(formData: FormData) {
-  await assertUserManagementAccess();
-
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const firstName = String(formData.get("first_name") ?? "").trim();
   const lastName = String(formData.get("last_name") ?? "").trim();
@@ -323,112 +472,311 @@ export async function createManagedUserAction(formData: FormData) {
   const temporaryPassword = String(formData.get("temporary_password") ?? "").trim();
   const marketingOptIn = formData.get("marketing_opt_in") === "on";
   const requestedRole = String(formData.get("role") ?? "customer").trim();
-  const role: ShopBridgeRole = requestedRole === "staff" ? "staff" : "customer";
-  const roles: ShopBridgeRole[] = role === "staff" ? ["customer", "staff"] : ["customer"];
-
-  if (!email) {
-    throw new Error("Email is required.");
-  }
-
-  if (temporaryPassword.length < 8) {
-    throw new Error("Temporary password must be at least 8 characters long.");
-  }
+  const role = getManagedRole(requestedRole);
+  const roles = getManagedRoles(role);
 
   try {
-    const client = await clerkClient();
-    const createdUser = await client.users.createUser({
-      emailAddress: [email],
-      password: temporaryPassword,
-      firstName: firstName || undefined,
-      lastName: lastName || undefined,
-      publicMetadata: {
-        role,
-        roles,
-      },
-    });
+    await assertUserManagementAccess();
 
-    const primaryEmail = createdUser.emailAddresses.find(
-      (address) => address.id === createdUser.primaryEmailAddressId,
+    if (!email) {
+      throw new Error("Email is required.");
+    }
+
+    if (temporaryPassword.length < 8) {
+      throw new Error("Temporary password must be at least 8 characters long.");
+    }
+
+    const client = await clerkClient();
+    const existingClerkUsers = await client.users.getUserList({
+      emailAddress: [email],
+      limit: 1,
+    });
+    const existingClerkUser = existingClerkUsers.data[0] ?? null;
+
+    const managedUser = existingClerkUser
+      ? await client.users.updateUser(existingClerkUser.id, {
+          password: temporaryPassword,
+          signOutOfOtherSessions: true,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          publicMetadata: {
+            role,
+            roles,
+          },
+        })
+      : await client.users.createUser({
+          emailAddress: [email],
+          password: temporaryPassword,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          publicMetadata: {
+            role,
+            roles,
+          },
+        });
+
+    const primaryEmail = managedUser.emailAddresses.find(
+      (address) => address.id === managedUser.primaryEmailAddressId,
     )?.emailAddress ?? email;
 
     const supabase = createAdminClient();
-    const { error } = await supabase.from("users").upsert({
-      id: createdUser.id,
+    const { data: existingProfile } = await supabase
+      .from("users")
+      .select("id, phone, marketing_opt_in")
+      .eq("email", primaryEmail)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    await syncManagedUserProfile({
+      currentId: existingProfile?.id ?? null,
+      nextId: managedUser.id,
       email: primaryEmail,
-      first_name: firstName || null,
-      last_name: lastName || null,
-      phone: phone || null,
-      avatar_url: createdUser.imageUrl ?? null,
+      firstName: managedUser.firstName ?? firstName ?? null,
+      lastName: managedUser.lastName ?? lastName ?? null,
+      phone: phone || existingProfile?.phone || null,
+      avatarUrl: managedUser.imageUrl ?? null,
       role,
-      marketing_opt_in: marketingOptIn,
+      marketingOptIn: marketingOptIn || Boolean(existingProfile?.marketing_opt_in),
       roles,
-    }, { onConflict: "id" });
+    });
 
-    if (error) {
-      throw new Error(`Unable to sync the new user to Supabase: ${error.message}`);
+    try {
+      await sendManagedUserWelcomeEmail({
+        email: primaryEmail,
+        firstName,
+        lastName,
+        role,
+        temporaryPassword,
+      });
+    } catch (emailError) {
+      console.error("Failed to send new account email", emailError);
     }
+
+    revalidatePath("/admin");
+    redirectToAdminUserManagement({
+      success: existingClerkUser
+        ? `${primaryEmail} is ready to sign in.`
+        : `${primaryEmail} was created successfully.`,
+    });
   } catch (error) {
-    const details = error as {
-      errors?: Array<{ longMessage?: string; message?: string }>;
-      message?: string;
-    };
+    unstable_rethrow(error);
 
-    throw new Error(
-      details.errors?.[0]?.longMessage ??
-        details.errors?.[0]?.message ??
-        details.message ??
-        "Unable to create the user account.",
-    );
+    redirectToAdminUserManagement({
+      error: getActionErrorMessage(error, "Unable to create the user account."),
+    });
   }
+}
 
-  revalidatePath("/admin");
+export async function changeManagedUserPasswordAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const requestedRole = String(formData.get("primary_role") ?? "customer").trim();
+  const role = getManagedRole(requestedRole);
+  const roles = getManagedRoles(role);
+  const nextPassword = String(formData.get("new_password") ?? "").trim();
+
+  try {
+    await assertUserManagementAccess();
+
+    if (!email) {
+      throw new Error("Email is required.");
+    }
+
+    if (nextPassword.length < 8) {
+      throw new Error("New password must be at least 8 characters long.");
+    }
+
+    const supabase = createAdminClient();
+    const { data: existingProfile } = await supabase
+      .from("users")
+      .select("id, phone, marketing_opt_in")
+      .eq("id", id)
+      .maybeSingle();
+
+    const client = await clerkClient();
+    let managedUser = null;
+
+    if (id.startsWith("user_")) {
+      try {
+        managedUser = await client.users.getUser(id);
+      } catch {
+        managedUser = null;
+      }
+    }
+
+    if (!managedUser) {
+      const matchedUsers = await client.users.getUserList({
+        emailAddress: [email],
+        limit: 1,
+      });
+      managedUser = matchedUsers.data[0] ?? null;
+    }
+
+    const syncedUser = managedUser
+      ? await client.users.updateUser(managedUser.id, {
+          password: nextPassword,
+          signOutOfOtherSessions: true,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          publicMetadata: {
+            role,
+            roles,
+          },
+        })
+      : await client.users.createUser({
+          emailAddress: [email],
+          password: nextPassword,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          publicMetadata: {
+            role,
+            roles,
+          },
+        });
+
+    await syncManagedUserProfile({
+      currentId: existingProfile?.id ?? id ?? null,
+      nextId: syncedUser.id,
+      email,
+      firstName: syncedUser.firstName ?? firstName ?? null,
+      lastName: syncedUser.lastName ?? lastName ?? null,
+      phone: existingProfile?.phone ?? null,
+      avatarUrl: syncedUser.imageUrl ?? null,
+      role,
+      marketingOptIn: Boolean(existingProfile?.marketing_opt_in),
+      roles,
+    });
+
+    try {
+      await sendManagedUserPasswordEmail({
+        email,
+        firstName,
+        lastName,
+        role,
+        temporaryPassword: nextPassword,
+      });
+    } catch (emailError) {
+      console.error("Failed to send password update email", emailError);
+    }
+
+    revalidatePath("/admin");
+    redirectToAdminUserManagement({ success: `Password updated for ${email}.` });
+  } catch (error) {
+    unstable_rethrow(error);
+
+    redirectToAdminUserManagement({
+      error: getActionErrorMessage(error, "Unable to update the password."),
+    });
+  }
 }
 
 export async function updateUserRolesAction(formData: FormData) {
-  await assertUserManagementAccess();
-
   const supabase = createAdminClient();
   const id = String(formData.get("id") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
 
-  if (!id) {
-    throw new Error("User ID is required.");
-  }
+  try {
+    await assertUserManagementAccess();
 
-  const selectedRoles = formData
-    .getAll("roles")
-    .map((value) => String(value))
-    .filter((value): value is ShopBridgeRole => value === "customer" || value === "admin" || value === "staff");
+    if (!id) {
+      throw new Error("User ID is required.");
+    }
 
-  const roles = Array.from(new Set(selectedRoles.length ? selectedRoles : ["customer"]));
+    const selectedRoles = formData
+      .getAll("roles")
+      .map((value) => String(value))
+      .filter((value): value is ShopBridgeRole => value === "customer" || value === "admin" || value === "staff");
 
-  if ((roles.includes("admin") || roles.includes("staff")) && !roles.includes("customer")) {
-    roles.unshift("customer");
-  }
+    const roles: ShopBridgeRole[] = Array.from(
+      new Set<ShopBridgeRole>(selectedRoles.length ? selectedRoles : ["customer"]),
+    );
 
-  const primaryRole: ShopBridgeRole = roles.includes("admin")
-    ? "admin"
-    : roles.includes("staff")
-      ? "staff"
-      : "customer";
+    if ((roles.includes("admin") || roles.includes("staff")) && !roles.includes("customer")) {
+      roles.unshift("customer");
+    }
 
-  if (id.startsWith("user_")) {
-    const client = await clerkClient();
-    await client.users.updateUser(id, {
-      publicMetadata: {
-        role: primaryRole,
-        roles,
-      },
+    const primaryRole: ShopBridgeRole = roles.includes("admin")
+      ? "admin"
+      : roles.includes("staff")
+        ? "staff"
+        : "customer";
+
+    let nextId = id;
+
+    if (email) {
+      const client = await clerkClient();
+      let managedUser = null;
+
+      if (id.startsWith("user_")) {
+        try {
+          managedUser = await client.users.getUser(id);
+        } catch {
+          managedUser = null;
+        }
+      }
+
+      if (!managedUser) {
+        const matchedUsers = await client.users.getUserList({
+          emailAddress: [email],
+          limit: 1,
+        });
+        managedUser = matchedUsers.data[0] ?? null;
+      }
+
+      if (managedUser) {
+        const updatedUser = await client.users.updateUser(managedUser.id, {
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          publicMetadata: {
+            role: primaryRole,
+            roles,
+          },
+        });
+
+        nextId = updatedUser.id;
+
+        const { data: existingProfile } = await supabase
+          .from("users")
+          .select("phone, marketing_opt_in")
+          .eq("id", id)
+          .maybeSingle();
+
+        await syncManagedUserProfile({
+          currentId: id,
+          nextId,
+          email,
+          firstName: updatedUser.firstName ?? firstName ?? null,
+          lastName: updatedUser.lastName ?? lastName ?? null,
+          phone: existingProfile?.phone ?? null,
+          avatarUrl: updatedUser.imageUrl ?? null,
+          role: primaryRole,
+          marketingOptIn: Boolean(existingProfile?.marketing_opt_in),
+          roles,
+        });
+      }
+    }
+
+    const { error } = await supabase.from("users").update({
+      role: primaryRole,
+      roles,
+    }).eq("id", nextId);
+
+    if (error) {
+      throw new Error(`Unable to update user roles: ${error.message}`);
+    }
+
+    revalidatePath("/admin");
+    redirectToAdminUserManagement({ success: "User roles updated successfully." });
+  } catch (error) {
+    unstable_rethrow(error);
+
+    redirectToAdminUserManagement({
+      error: getActionErrorMessage(error, "Unable to update user roles."),
     });
   }
-
-  const { error } = await supabase.from("users").update({
-    role: primaryRole,
-    roles,
-  }).eq("id", id);
-
-  if (error) {
-    throw new Error(`Unable to update user roles: ${error.message}`);
-  }
-
-  revalidatePath("/admin");
 }

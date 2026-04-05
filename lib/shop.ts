@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { createReadonlyClient } from "@/lib/supabase/server";
+import { normalizeRemoteImageUrl } from "@/lib/utils";
 
 export type StorefrontCategory = {
   id: string;
@@ -91,7 +92,9 @@ function normalizeStringArray(value: unknown) {
 function normalizeProduct(row: RawStorefrontProduct): StorefrontProduct {
   return {
     ...row,
-    images: normalizeStringArray(row.images),
+    images: normalizeStringArray(row.images)
+      .map((item) => normalizeRemoteImageUrl(item))
+      .filter((item): item is string => Boolean(item)),
     tags: normalizeStringArray(row.tags),
     category: Array.isArray(row.category) ? row.category[0] ?? null : row.category ?? null,
   };

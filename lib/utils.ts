@@ -36,6 +36,35 @@ export function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+export function normalizeRemoteImageUrl(value: string | null | undefined): string | null {
+  const trimmed = String(value ?? "").trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return null;
+    }
+
+    if (parsed.hostname.includes("google.") && parsed.pathname.startsWith("/imgres")) {
+      const nestedUrl =
+        parsed.searchParams.get("imgurl") ??
+        parsed.searchParams.get("url") ??
+        parsed.searchParams.get("mediaurl");
+
+      return nestedUrl ? normalizeRemoteImageUrl(decodeURIComponent(nestedUrl)) : null;
+    }
+
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function generateOrderNumber(prefix = "SB") {
   const stamp = Date.now().toString(36).toUpperCase();
   return `${prefix}-${stamp}`;

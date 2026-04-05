@@ -1,12 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { auth } from "@clerk/nextjs/server";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, Boxes, ImageOff, ShieldCheck, Tags, Users } from "lucide-react";
 
 import { getCurrentUserRoles, type ShopBridgeRole } from "@/lib/auth/current-user";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
-import { formatZAR } from "@/lib/utils";
+import { formatZAR, normalizeRemoteImageUrl } from "@/lib/utils";
 
 import {
   createCategoryAction,
@@ -16,6 +17,7 @@ import {
   updateCategoryAction,
   updateProductAction,
   createManagedUserAction,
+  changeManagedUserPasswordAction,
   updateUserRolesAction,
 } from "./actions";
 
@@ -67,7 +69,7 @@ type AdminUserRow = {
 };
 
 type AdminPageProps = {
-  searchParams?: Promise<{ filter?: string; page?: string }>;
+  searchParams?: Promise<{ filter?: string; page?: string; userSuccess?: string; userError?: string }>;
 };
 
 function normalizeStringList(value: string[] | string | null | undefined) {
@@ -220,6 +222,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   }
 
   const rawSearchParams = searchParams ? await searchParams : {};
+  const userSuccessMessage = rawSearchParams?.userSuccess?.trim() ?? "";
+  const userErrorMessage = rawSearchParams?.userError?.trim() ?? "";
   const currentFilter = productFilters.includes((rawSearchParams?.filter as ProductFilter) ?? "all")
     ? ((rawSearchParams?.filter as ProductFilter) ?? "all")
     : "all";
@@ -388,7 +392,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <div className="mt-6 space-y-4">
             {visibleProducts.length ? (
               visibleProducts.map((product) => {
-                const imageUrl = normalizeStringList(product.images)[0] ?? "";
+                const imageUrl = normalizeRemoteImageUrl(normalizeStringList(product.images)[0]);
                 const tags = normalizeStringList(product.tags).join(", ");
                 const issues = getProductIssues(product);
 
@@ -399,7 +403,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <div className="flex items-center gap-4">
                           <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
                             {imageUrl ? (
-                              <Image src={imageUrl} alt={product.name} fill sizes="80px" className="object-cover" />
+                              <img
+                                src={imageUrl}
+                                alt={product.name}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               <div className="flex h-full items-center justify-center text-[11px] font-medium text-slate-500">
                                 No image
@@ -440,7 +450,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <div className="space-y-3">
                           <div className="relative h-28 overflow-hidden rounded-2xl bg-slate-100">
                             {imageUrl ? (
-                              <Image src={imageUrl} alt={product.name} fill sizes="120px" className="object-cover" />
+                              <img
+                                src={imageUrl}
+                                alt={product.name}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               <div className="flex h-full items-center justify-center text-xs text-slate-500">Missing image</div>
                             )}
@@ -452,7 +468,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
                         <div className="space-y-4">
                           <input type="hidden" name="id" value={product.id} />
-                          <input type="hidden" name="existing_image_url" value={imageUrl} />
+                          <input type="hidden" name="existing_image_url" value={imageUrl ?? ""} />
 
                           <div className="grid gap-4 md:grid-cols-2">
                             <label className="space-y-2 text-sm font-medium text-slate-700">
@@ -732,11 +748,23 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </div>
           </details>
 
-          <div className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div id="user-management" className="rounded-4xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-2xl font-black tracking-tight text-slate-950">User roles</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Create Clerk-backed staff and customer accounts, then manage synced roles from one place. Showing the latest {users.length} of {totalUsers} synced users.
+              Create sign-in access and manage customer, staff, and admin roles from one place. Showing the latest {users.length} of {totalUsers} users.
             </p>
+
+            {userSuccessMessage ? (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {userSuccessMessage}
+              </div>
+            ) : null}
+
+            {userErrorMessage ? (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {userErrorMessage}
+              </div>
+            ) : null}
 
             {canManageUsers ? (
               <form action={createManagedUserAction} className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -809,6 +837,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 return (
                   <form key={user.id} action={updateUserRolesAction} className="rounded-3xl border border-slate-200 p-4">
                     <input type="hidden" name="id" value={user.id} />
+                    <input type="hidden" name="email" value={user.email} />
+                    <input type="hidden" name="first_name" value={user.first_name ?? ""} />
+                    <input type="hidden" name="last_name" value={user.last_name ?? ""} />
+                    <input type="hidden" name="primary_role" value={user.role ?? "customer"} />
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                       <div>
                         <p className="font-semibold text-slate-950">{displayName}</p>
@@ -836,6 +868,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
                         Primary role: {user.role ?? "customer"}
                       </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                        Secure sign-in access
+                      </span>
                       <button
                         type="submit"
                         disabled={!canManageUsers}
@@ -844,6 +879,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         {canManageUsers ? "Update roles" : "Admin only"}
                       </button>
                     </div>
+
+                    <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 md:grid-cols-[1fr_auto] md:items-end">
+                      <label className="space-y-2 text-sm font-medium text-slate-700">
+                        Temporary password
+                        <input
+                          name="new_password"
+                          type="password"
+                          minLength={8}
+                          placeholder="Set a new temporary password"
+                          disabled={!canManageUsers}
+                          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        formAction={changeManagedUserPasswordAction}
+                        disabled={!canManageUsers}
+                        className="inline-flex rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                      >
+                        Set password
+                      </button>
+                    </div>
+
                   </form>
                 );
               })}
