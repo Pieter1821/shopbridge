@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-
+.gstack
 # next.js
 /.next/
 /out/

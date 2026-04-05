@@ -9,11 +9,6 @@ export const revalidate = 60;
 
 const heroHighlights = ["Realtime stock", "Secure checkout", "Local delivery"];
 
-const heroStats = [
-  { label: "Fast lanes", value: "3-step" },
-  { label: "Local currency", value: "ZAR" },
-  { label: "Stock sync", value: "Live" },
-];
 
 const valueProps = [
   {
@@ -81,16 +76,7 @@ export default async function Home() {
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {heroStats.map((item) => (
-                <Card key={item.label} className="border border-white/10 bg-white/5 text-white shadow-none backdrop-blur">
-                  <CardContent className="gap-1 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{item.label}</p>
-                    <p className="text-2xl font-black tracking-tight">{item.value}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+         
           </div>
         </div>
 

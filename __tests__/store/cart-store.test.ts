@@ -1,232 +1,324 @@
+import { beforeEach, describe, expect, it } from "vitest";
 import { useCartStore, type CartItem } from "@/store/cart-store";
 
-function makeItem(overrides: Partial<CartItem> = {}): CartItem {
-  return {
-    productId: "prod-1",
-    slug: "product-one",
-    name: "Product One",
-    brand: "Brand A",
-    priceCents: 5000,
-    quantity: 1,
-    stockQuantity: 10,
-    ...overrides,
-  };
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const base: CartItem = {
+  productId: "p1",
+  slug: "test-product",
+  name: "Test Product",
+  brand: "Test Brand",
+  priceCents: 1000,
+  quantity: 1,
+};
+
+function item(overrides: Partial<CartItem> = {}): CartItem {
+  return { ...base, ...overrides };
 }
+
+function get() {
+  return useCartStore.getState();
+}
+
+function seed(items: CartItem[], stockNotice: string | null = null) {
+  useCartStore.setState({ items, stockNotice });
+}
+
+// ---------------------------------------------------------------------------
+// Reset store to a clean slate before every test
+// ---------------------------------------------------------------------------
 
 beforeEach(() => {
   localStorage.clear();
   useCartStore.setState({ items: [], stockNotice: null });
 });
 
-describe("addItem — sold-out removal", () => {
-  it("removes an existing item when stock is 0", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 5 }));
-    expect(useCartStore.getState().items).toHaveLength(1);
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 0 }));
-    expect(useCartStore.getState().items).toHaveLength(0);
-    expect(useCartStore.getState().stockNotice).toContain("sold out");
+// ---------------------------------------------------------------------------
+// addItem
+// ---------------------------------------------------------------------------
+
+describe("addItem", () => {
+  describe("new item (not already in cart)", () => {
+    it("adds item with correct fields and null stockNotice", () => {
+      get().addItem(item());
+      expect(get().items).toHaveLength(1);
+      expect(get().items[0]).toMatchObject({ productId: "p1", quantity: 1 });
+      expect(get().stockNotice).toBeNull();
+    });
+
+    it("stores null stockQuantity when none is provided", () => {
+      get().addItem(item());
+      expect(get().items[0].stockQuantity).toBeNull();
+    });
+
+    it("stores the provided stockQuantity", () => {
+      get().addItem(item({ stockQuantity: 10 }));
+      expect(get().items[0].stockQuantity).toBe(10);
+    });
+
+    it("clamps quantity to stock and sets limited-stock notice (plural)", () => {
+      get().addItem(item({ quantity: 5, stockQuantity: 3 }));
+      expect(get().items[0].quantity).toBe(3);
+      expect(get().stockNotice).toBe(
+        "Only 3 units of Test Product are available right now."
+      );
+    });
+
+    it("uses singular 'unit' when only 1 unit available", () => {
+      get().addItem(item({ quantity: 5, stockQuantity: 1 }));
+      expect(get().items[0].quantity).toBe(1);
+      expect(get().stockNotice).toBe(
+        "Only 1 unit of Test Product are available right now."
+      );
+    });
+
+    it("sets no notice when requested quantity fits stock exactly", () => {
+      get().addItem(item({ quantity: 3, stockQuantity: 3 }));
+      expect(get().items[0].quantity).toBe(3);
+      expect(get().stockNotice).toBeNull();
+    });
+
+    it("removes item and sets sold-out notice when stockQuantity is 0", () => {
+      get().addItem(item({ stockQuantity: 0 }));
+      expect(get().items).toHaveLength(0);
+      expect(get().stockNotice).toBe(
+        "Test Product is currently sold out and was removed from your cart."
+      );
+    });
   });
 
-  it("does not add a new item when stock is 0", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 0 }));
-    expect(useCartStore.getState().items).toHaveLength(0);
-    expect(useCartStore.getState().stockNotice).toContain("sold out");
+  describe("existing item (already in cart)", () => {
+    it("increments quantity and clears notice", () => {
+      get().addItem(item({ stockQuantity: 10 }));
+      get().addItem(item({ quantity: 2, stockQuantity: 10 }));
+      expect(get().items).toHaveLength(1);
+      expect(get().items[0].quantity).toBe(3);
+      expect(get().stockNotice).toBeNull();
+    });
+
+    it("clamps combined quantity to stock and sets live-stock notice", () => {
+      get().addItem(item({ quantity: 2, stockQuantity: 3 }));
+      get().addItem(item({ quantity: 2, stockQuantity: 3 }));
+      expect(get().items[0].quantity).toBe(3);
+      expect(get().stockNotice).toBe(
+        "Cart updated to the live stock available for Test Product."
+      );
+    });
+
+    it("updates stockQuantity on the existing cart item", () => {
+      get().addItem(item({ stockQuantity: 10 }));
+      get().addItem(item({ quantity: 1, stockQuantity: 5 }));
+      expect(get().items[0].stockQuantity).toBe(5);
+    });
+
+    it("falls back to existing stockQuantity when new add omits it", () => {
+      get().addItem(item({ stockQuantity: 8 }));
+      get().addItem(item({ quantity: 1 })); // no stockQuantity
+      expect(get().items[0].stockQuantity).toBe(8);
+    });
+
+    it("removes item and sets sold-out notice when combined quantity clamps to 0", () => {
+      get().addItem(item({ quantity: 1 }));
+      get().addItem(item({ quantity: 1, stockQuantity: 0 }));
+      expect(get().items).toHaveLength(0);
+      expect(get().stockNotice).toBe(
+        "Test Product is currently sold out and was removed from your cart."
+      );
+    });
   });
 });
 
-describe("addItem — existing item clamped", () => {
-  it("clamps quantity to stock and sets a stockNotice", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 3, stockQuantity: 5 }));
-    useCartStore.getState().addItem(makeItem({ quantity: 4, stockQuantity: 5 }));
-    const item = useCartStore.getState().items[0];
-    expect(item.quantity).toBe(5);
-    expect(useCartStore.getState().stockNotice).toContain("live stock");
-  });
-
-  it("updates quantity without clamping when sufficient stock exists", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 10 }));
-    useCartStore.getState().addItem(makeItem({ quantity: 2, stockQuantity: 10 }));
-    expect(useCartStore.getState().items[0].quantity).toBe(3);
-    expect(useCartStore.getState().stockNotice).toBeNull();
-  });
-
-  it("updates the stockQuantity metadata on the existing item", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 10 }));
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 8 }));
-    expect(useCartStore.getState().items[0].stockQuantity).toBe(8);
-  });
-});
-
-describe("addItem — new item", () => {
-  it("adds a new item to an empty cart", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 2 }));
-    const items = useCartStore.getState().items;
-    expect(items).toHaveLength(1);
-    expect(items[0].productId).toBe("prod-1");
-    expect(items[0].quantity).toBe(2);
-  });
-
-  it("adds distinct items to the cart", () => {
-    useCartStore.getState().addItem(makeItem({ productId: "prod-1", quantity: 1 }));
-    useCartStore.getState().addItem(makeItem({ productId: "prod-2", slug: "p2", quantity: 1 }));
-    expect(useCartStore.getState().items).toHaveLength(2);
-  });
-
-  it("sets a stockNotice when the new item quantity is clamped", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 5, stockQuantity: 3, name: "Limited Widget" }));
-    const item = useCartStore.getState().items[0];
-    expect(item.quantity).toBe(3);
-    expect(useCartStore.getState().stockNotice).toContain("Limited Widget");
-    expect(useCartStore.getState().stockNotice).toContain("3");
-  });
-
-  it("correctly handles singular 'unit' in notice for quantity = 1", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 5, stockQuantity: 1, name: "Rare Item" }));
-    expect(useCartStore.getState().stockNotice).toContain("1 unit");
-    expect(useCartStore.getState().stockNotice).not.toContain("units");
-  });
-
-  it("uses plural 'units' in notice for quantity > 1", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 10, stockQuantity: 2, name: "Popular Item" }));
-    expect(useCartStore.getState().stockNotice).toContain("2 units");
-  });
-});
+// ---------------------------------------------------------------------------
+// removeItem
+// ---------------------------------------------------------------------------
 
 describe("removeItem", () => {
-  it("removes the specified item", () => {
-    useCartStore.getState().addItem(makeItem({ productId: "prod-1", quantity: 1 }));
-    useCartStore.getState().addItem(makeItem({ productId: "prod-2", slug: "p2", quantity: 1 }));
-    useCartStore.getState().removeItem("prod-1");
-    expect(useCartStore.getState().items).toHaveLength(1);
-    expect(useCartStore.getState().items[0].productId).toBe("prod-2");
+  it("removes the correct item", () => {
+    seed([
+      item({ productId: "p1" }),
+      item({ productId: "p2", slug: "p2" }),
+    ]);
+    get().removeItem("p1");
+    expect(get().items).toHaveLength(1);
+    expect(get().items[0].productId).toBe("p2");
   });
 
-  it("clears the stockNotice when removing an item", () => {
-    useCartStore.setState({ stockNotice: "Some notice" });
-    useCartStore.getState().addItem(makeItem({ quantity: 1 }));
-    useCartStore.getState().removeItem("prod-1");
-    expect(useCartStore.getState().stockNotice).toBeNull();
+  it("clears stockNotice on removal", () => {
+    seed([item()], "some notice");
+    get().removeItem("p1");
+    expect(get().stockNotice).toBeNull();
+  });
+
+  it("leaves cart unchanged when item does not exist", () => {
+    seed([item()]);
+    get().removeItem("nonexistent");
+    expect(get().items).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// updateQuantity
+// ---------------------------------------------------------------------------
 
 describe("updateQuantity", () => {
-  it("returns state unchanged when productId is not in cart", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 2 }));
-    const stateBefore = useCartStore.getState().items;
-    useCartStore.getState().updateQuantity("no-such-product", 5);
-    expect(useCartStore.getState().items).toStrictEqual(stateBefore);
+  it("returns state unchanged when item is not in cart", () => {
+    seed([item()]);
+    get().updateQuantity("nonexistent", 3);
+    expect(get().items).toHaveLength(1);
+    expect(get().stockNotice).toBeNull();
   });
 
-  it("clamps quantity to stock when requested quantity exceeds stock", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 3 }));
-    useCartStore.getState().updateQuantity("prod-1", 10);
-    expect(useCartStore.getState().items[0].quantity).toBe(3);
-    expect(useCartStore.getState().stockNotice).toContain("live stock");
+  it("updates quantity and sets no notice when within stock", () => {
+    seed([item({ stockQuantity: 10 })]);
+    get().updateQuantity("p1", 5);
+    expect(get().items[0].quantity).toBe(5);
+    expect(get().stockNotice).toBeNull();
   });
 
-  it("updates quantity to the specified value when within stock", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 10 }));
-    useCartStore.getState().updateQuantity("prod-1", 5);
-    expect(useCartStore.getState().items[0].quantity).toBe(5);
-    expect(useCartStore.getState().stockNotice).toBeNull();
+  it("clamps to stock limit and sets live-stock notice", () => {
+    seed([item({ quantity: 2, stockQuantity: 5 })]);
+    get().updateQuantity("p1", 10);
+    expect(get().items[0].quantity).toBe(5);
+    expect(get().stockNotice).toBe(
+      "Quantity updated to match the live stock for Test Product."
+    );
+  });
+
+  it("removes item and sets sold-out notice when stockQuantity is 0", () => {
+    seed([item({ quantity: 2, stockQuantity: 0 })]);
+    get().updateQuantity("p1", 3);
+    expect(get().items).toHaveLength(0);
+    expect(get().stockNotice).toBe(
+      "Test Product is now sold out and was removed from your cart."
+    );
+  });
+
+  it("clamps quantity to minimum 1 when no stock limit and 0 requested", () => {
+    seed([item({ quantity: 2 })]); // no stockQuantity → null
+    get().updateQuantity("p1", 0);
+    expect(get().items[0].quantity).toBe(1);
+    expect(get().stockNotice).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// syncStock
+// ---------------------------------------------------------------------------
 
 describe("syncStock", () => {
-  it("is a no-op when the productId is not in the cart", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1 }));
-    const stateBefore = useCartStore.getState().items;
-    useCartStore.getState().syncStock("non-existent", 10);
-    expect(useCartStore.getState().items).toStrictEqual(stateBefore);
+  it("returns state unchanged when item is not in cart", () => {
+    seed([item()]);
+    get().syncStock("nonexistent", 5);
+    expect(get().items).toHaveLength(1);
+    expect(get().stockNotice).toBeNull();
   });
 
-  it("returns the same state reference when nothing changes", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 1, stockQuantity: 10 }));
-    const stateBefore = useCartStore.getState();
-    useCartStore.getState().syncStock("prod-1", 10);
-    expect(useCartStore.getState().items[0].quantity).toBe(1);
-    expect(useCartStore.getState().items[0].stockQuantity).toBe(10);
-    expect(useCartStore.getState().stockNotice).toBeNull();
-    expect(useCartStore.getState().items).toBe(stateBefore.items);
+  it("is a no-op when quantity and stockQuantity are already in sync", () => {
+    seed([item({ quantity: 2, stockQuantity: 5 })]);
+    const before = get().items;
+    get().syncStock("p1", 5); // nothing changes
+    expect(get().items).toBe(before); // same reference — Zustand skipped the update
+    expect(get().stockNotice).toBeNull();
   });
 
-  it("removes the item and sets a stockNotice when stock drops to 0", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 2, stockQuantity: 5 }));
-    useCartStore.getState().syncStock("prod-1", 0);
-    expect(useCartStore.getState().items).toHaveLength(0);
-    expect(useCartStore.getState().stockNotice).toContain("sold out");
+  it("removes item and sets sold-out notice when stock drops to 0", () => {
+    seed([item({ quantity: 2, stockQuantity: 5 })]);
+    get().syncStock("p1", 0);
+    expect(get().items).toHaveLength(0);
+    expect(get().stockNotice).toBe(
+      "Test Product sold out and was removed from your cart."
+    );
   });
 
-  it("clamps quantity and sets a real-time notice when stock drops below current quantity", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 5, stockQuantity: 10 }));
-    useCartStore.getState().syncStock("prod-1", 3);
-    const item = useCartStore.getState().items[0];
-    expect(item.quantity).toBe(3);
-    expect(item.stockQuantity).toBe(3);
-    expect(useCartStore.getState().stockNotice).toContain("real time");
+  it("reduces quantity and sets real-time notice when stock drops below current quantity", () => {
+    seed([item({ quantity: 5, stockQuantity: 10 })]);
+    get().syncStock("p1", 3);
+    expect(get().items[0].quantity).toBe(3);
+    expect(get().items[0].stockQuantity).toBe(3);
+    expect(get().stockNotice).toBe(
+      "Cart updated in real time for Test Product — only 3 left."
+    );
   });
 
-  it("updates stockQuantity without clamping when stock is still sufficient", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 2, stockQuantity: 10 }));
-    useCartStore.getState().syncStock("prod-1", 7);
-    const item = useCartStore.getState().items[0];
-    expect(item.quantity).toBe(2);
-    expect(item.stockQuantity).toBe(7);
-    expect(useCartStore.getState().stockNotice).toBeNull();
+  it("updates stockQuantity without changing quantity or notice when stock increases", () => {
+    seed([item({ quantity: 2, stockQuantity: 3 })]);
+    get().syncStock("p1", 10);
+    expect(get().items[0].quantity).toBe(2);
+    expect(get().items[0].stockQuantity).toBe(10);
+    expect(get().stockNotice).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// clearCart
+// ---------------------------------------------------------------------------
 
 describe("clearCart", () => {
-  it("removes all items and clears the stockNotice", () => {
-    useCartStore.getState().addItem(makeItem({ productId: "prod-1", quantity: 1 }));
-    useCartStore.getState().addItem(makeItem({ productId: "prod-2", slug: "p2", quantity: 2 }));
-    useCartStore.setState({ stockNotice: "Some notice" });
-    useCartStore.getState().clearCart();
-    expect(useCartStore.getState().items).toHaveLength(0);
-    expect(useCartStore.getState().stockNotice).toBeNull();
+  it("empties items and clears stockNotice", () => {
+    seed([item(), item({ productId: "p2", slug: "p2" })], "some notice");
+    get().clearCart();
+    expect(get().items).toHaveLength(0);
+    expect(get().stockNotice).toBeNull();
+  });
+
+  it("is safe to call on an already empty cart", () => {
+    get().clearCart();
+    expect(get().items).toHaveLength(0);
   });
 });
 
+// ---------------------------------------------------------------------------
+// clearStockNotice
+// ---------------------------------------------------------------------------
+
 describe("clearStockNotice", () => {
-  it("sets stockNotice to null", () => {
-    useCartStore.setState({ stockNotice: "A notice" });
-    useCartStore.getState().clearStockNotice();
-    expect(useCartStore.getState().stockNotice).toBeNull();
+  it("clears the notice without touching items", () => {
+    seed([item()], "notice to clear");
+    get().clearStockNotice();
+    expect(get().stockNotice).toBeNull();
+    expect(get().items).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// totalCents
+// ---------------------------------------------------------------------------
 
 describe("totalCents", () => {
   it("returns 0 for an empty cart", () => {
-    expect(useCartStore.getState().totalCents()).toBe(0);
+    expect(get().totalCents()).toBe(0);
   });
 
-  it("sums priceCents * quantity for a single item", () => {
-    useCartStore.getState().addItem(makeItem({ priceCents: 5000, quantity: 3 }));
-    expect(useCartStore.getState().totalCents()).toBe(15000);
+  it("calculates correctly for a single item with quantity > 1", () => {
+    seed([item({ priceCents: 999, quantity: 3 })]);
+    expect(get().totalCents()).toBe(2997);
   });
 
   it("sums across multiple items", () => {
-    useCartStore.getState().addItem(makeItem({ productId: "p1", priceCents: 1000, quantity: 2 }));
-    useCartStore.getState().addItem(makeItem({ productId: "p2", slug: "p2", priceCents: 2000, quantity: 1 }));
-    expect(useCartStore.getState().totalCents()).toBe(4000);
+    seed([
+      item({ productId: "p1", priceCents: 1000, quantity: 2 }),
+      item({ productId: "p2", slug: "p2", priceCents: 500, quantity: 3 }),
+    ]);
+    expect(get().totalCents()).toBe(3500);
   });
 });
 
+// ---------------------------------------------------------------------------
+// itemCount
+// ---------------------------------------------------------------------------
+
 describe("itemCount", () => {
   it("returns 0 for an empty cart", () => {
-    expect(useCartStore.getState().itemCount()).toBe(0);
+    expect(get().itemCount()).toBe(0);
   });
 
-  it("sums quantities across all items", () => {
-    useCartStore.getState().addItem(makeItem({ productId: "p1", quantity: 3 }));
-    useCartStore.getState().addItem(makeItem({ productId: "p2", slug: "p2", quantity: 2 }));
-    expect(useCartStore.getState().itemCount()).toBe(5);
-  });
-
-  it("reflects quantity updates", () => {
-    useCartStore.getState().addItem(makeItem({ quantity: 5, stockQuantity: 10 }));
-    expect(useCartStore.getState().itemCount()).toBe(5);
-    useCartStore.getState().updateQuantity("prod-1", 2);
-    expect(useCartStore.getState().itemCount()).toBe(2);
+  it("sums quantities across all cart items", () => {
+    seed([
+      item({ productId: "p1", quantity: 2 }),
+      item({ productId: "p2", slug: "p2", quantity: 3 }),
+    ]);
+    expect(get().itemCount()).toBe(5);
   });
 });

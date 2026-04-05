@@ -93,7 +93,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </p>
         ) : liveCategories.length ? (
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-            Only categories with live products are shown here.
+            Only categories with products are shown here.
           </p>
         ) : null}
       </section>
@@ -103,13 +103,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <ProductGrid products={filteredProducts} />
         ) : (
           <div className="rounded-4xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
-            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">No live products in this category yet</h2>
+            <h2 className="text-xl font-semibold text-slate-950 dark:text-white">No products in this category yet</h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               Try another category or return to the full catalogue.
             </p>
           </div>
         )}
-      </section>
+      </section>    
     </div>
   );
 }
