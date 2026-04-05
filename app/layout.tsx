@@ -46,7 +46,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const hasClerkKeys = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   const themeInitScript = `(() => { try { const storageKey = "shopbridge-theme"; const savedTheme = localStorage.getItem(storageKey); const shouldUseDark = savedTheme ? savedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches; document.documentElement.classList.toggle("dark", shouldUseDark); } catch (error) {} })();`;
 
   const shell = (
@@ -73,7 +72,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-slate-100 text-slate-950 transition-colors dark:bg-slate-950 dark:text-slate-50">
-        {hasClerkKeys ? <ClerkProvider>{shell}</ClerkProvider> : shell}
+        <ClerkProvider>{shell}</ClerkProvider>
       </body>
     </html>
   );
