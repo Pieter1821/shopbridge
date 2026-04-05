@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PriceDisplay } from "@/components/shared/PriceDisplay";
-import { StockBadge } from "@/components/shared/StockBadge";
+import { ProductAvailabilityBadge } from "@/components/shared/ProductAvailabilityBadge";
 import { getProductBySlug } from "@/lib/shop";
 
 import { AddToCartButton } from "./AddToCartButton";
@@ -101,7 +101,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 compareAtPriceCents={product.compare_at_price_cents ?? undefined}
               />
             </div>
-            <StockBadge stock={product.stock_quantity} lowStockThreshold={product.low_stock_threshold} />
+            <ProductAvailabilityBadge
+              productId={product.id}
+              stock={product.stock_quantity}
+              lowStockThreshold={product.low_stock_threshold}
+            />
           </div>
 
           <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">

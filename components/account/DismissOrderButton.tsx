@@ -1,47 +1,38 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
 
-const HIDDEN_ORDERS_STORAGE_KEY = "shopbridge-hidden-orders";
+import { notifyLocalStorageChange } from "@/hooks/useLocalStorage";
+
+export const HIDDEN_ORDERS_STORAGE_KEY = "shopbridge-hidden-orders";
 
 function getHiddenOrderIds() {
   if (typeof window === "undefined") {
-    return new Set<string>();
+    return [] as string[];
   }
 
   try {
-    const raw = localStorage.getItem(HIDDEN_ORDERS_STORAGE_KEY);
+    const raw = window.localStorage.getItem(HIDDEN_ORDERS_STORAGE_KEY);
     if (!raw) {
-      return new Set<string>();
+      return [] as string[];
     }
 
     const parsed = JSON.parse(raw);
-    return new Set(Array.isArray(parsed) ? parsed.map((value) => String(value)) : []);
+    return Array.isArray(parsed) ? parsed.map((value) => String(value)) : [];
   } catch {
-    return new Set<string>();
+    return [] as string[];
   }
 }
 
 export function DismissOrderButton({ orderId }: { orderId: string }) {
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (getHiddenOrderIds().has(orderId)) {
-      buttonRef.current?.closest("[data-order-id]")?.remove();
-    }
-  }, [orderId]);
-
   function handleDismiss() {
-    const hiddenOrderIds = getHiddenOrderIds();
-    hiddenOrderIds.add(orderId);
-    localStorage.setItem(HIDDEN_ORDERS_STORAGE_KEY, JSON.stringify(Array.from(hiddenOrderIds)));
-    buttonRef.current?.closest("[data-order-id]")?.remove();
+    const nextHiddenOrderIds = Array.from(new Set([...getHiddenOrderIds(), orderId]));
+    window.localStorage.setItem(HIDDEN_ORDERS_STORAGE_KEY, JSON.stringify(nextHiddenOrderIds));
+    notifyLocalStorageChange(HIDDEN_ORDERS_STORAGE_KEY);
   }
 
   return (
     <button
-      ref={buttonRef}
       type="button"
       onClick={handleDismiss}
       aria-label="Remove this order from view"

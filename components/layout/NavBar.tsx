@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
+
+import { LiveSearchBox } from "@/components/search/LiveSearchBox";
 
 import { cn } from "@/lib/utils";
 
@@ -14,7 +16,7 @@ import { ThemeToggle } from "./ThemeToggle";
 const links = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
-  { href: "/search?q=jordan", label: "Search" },
+  { href: "/search", label: "Search" },
   { href: "/checkout", label: "Checkout" },
 ];
 
@@ -62,18 +64,7 @@ export function NavBar() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <form
-              action="/search"
-              className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50/90 px-3 py-2 xl:flex dark:border-slate-700 dark:bg-slate-900/90"
-            >
-              <Search className="h-4 w-4 text-slate-400" />
-              <input
-                name="q"
-                type="search"
-                placeholder="Search products"
-                className="w-44 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </form>
+            <LiveSearchBox />
 
             <ThemeToggle />
             {hasClerkKeys ? <AuthControls /> : null}
@@ -92,18 +83,7 @@ export function NavBar() {
 
         <div className={cn("overflow-hidden transition-all duration-300 lg:hidden", mobileOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0")}>
           <div className="border-t border-slate-200/80 px-3 py-3 dark:border-slate-800">
-            <form
-              action="/search"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
-            >
-              <Search className="h-4 w-4 text-slate-400" />
-              <input
-                name="q"
-                type="search"
-                placeholder="Search products"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </form>
+            <LiveSearchBox mobile onNavigate={() => setMobileOpen(false)} />
 
             <nav className="mt-3 grid gap-2">
               {links.map((link) => {

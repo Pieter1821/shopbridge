@@ -13,9 +13,34 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = searchParams ? await searchParams : {};
   const selectedCategory = params.category?.trim() ?? "";
   const [categories, products] = await Promise.all([getCategories(), getAllProducts()]);
-  const quickCategories = categories.filter((category, index) => index < 6 || category.slug === selectedCategory);
-  const filteredProducts = selectedCategory
-    ? products.filter((product) => product.category?.slug === selectedCategory)
+
+  const categoryCounts = new Map<string, number>();
+  for (const product of products) {
+    const slug = product.category?.slug;
+    if (!slug) {
+      continue;
+    }
+
+    categoryCounts.set(slug, (categoryCounts.get(slug) ?? 0) + 1);
+  }
+
+  const liveCategories = categories
+    .filter((category) => (categoryCounts.get(category.slug) ?? 0) > 0)
+    .sort((a, b) => {
+      const countDifference = (categoryCounts.get(b.slug) ?? 0) - (categoryCounts.get(a.slug) ?? 0);
+      if (countDifference !== 0) {
+        return countDifference;
+      }
+
+      return (a.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.sort_order ?? Number.MAX_SAFE_INTEGER);
+    });
+
+  const effectiveCategory = liveCategories.some((category) => category.slug === selectedCategory)
+    ? selectedCategory
+    : "";
+  const quickCategories = liveCategories.filter((category, index) => index < 6 || category.slug === effectiveCategory);
+  const filteredProducts = effectiveCategory
+    ? products.filter((product) => product.category?.slug === effectiveCategory)
     : products;
 
   return (
@@ -31,12 +56,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           Browse the live ShopBridge product feed and discover the newest arrivals across fashion, accessories, footwear, and everyday essentials.
         </p>
 
-        {categories.length ? (
+        {liveCategories.length ? (
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href="/products"
               className={`rounded-full border px-3 py-1 text-sm transition ${
-                !selectedCategory
+                !effectiveCategory
                   ? "border-slate-950 bg-slate-950 text-white dark:border-emerald-500 dark:bg-emerald-600"
                   : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
               }`}
@@ -44,7 +69,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               All
             </Link>
             {quickCategories.map((category) => {
-              const isActive = category.slug === selectedCategory;
+              const isActive = category.slug === effectiveCategory;
               return (
                 <Link
                   key={category.id}
@@ -62,9 +87,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </div>
         ) : null}
 
-        {categories.length > quickCategories.length ? (
+        {liveCategories.length > quickCategories.length ? (
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-            Showing the most-used categories first to keep the catalogue cleaner.
+            Showing the most-used live categories first to keep the catalogue cleaner.
+          </p>
+        ) : liveCategories.length ? (
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+            Only categories with live products are shown here.
           </p>
         ) : null}
       </section>

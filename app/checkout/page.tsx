@@ -1,5 +1,6 @@
 "use client";
 
+import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import Link from "next/link";
@@ -77,6 +78,8 @@ export default function CheckoutPage() {
   const itemCount = useCartStore((state) => state.itemCount());
   const stockNotice = useCartStore((state) => state.stockNotice);
   const hydrated = useHydrated();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
 
   useCartStockSync(hydrated);
 
@@ -148,6 +151,21 @@ export default function CheckoutPage() {
     setOrderNumber(null);
   }, [items]);
 
+  useEffect(() => {
+    if (!hydrated || !hasLoadedSavedDetails || !isSignedIn || !user) {
+      return;
+    }
+
+    setCustomer((current) => ({
+      ...current,
+      firstName: current.firstName || user.firstName || "",
+      lastName: current.lastName || user.lastName || "",
+      email: current.email || user.primaryEmailAddress?.emailAddress || "",
+    }));
+  }, [hasLoadedSavedDetails, hydrated, isSignedIn, user]);
+
+  const requiresSignIn = hydrated && isLoaded && !isSignedIn;
+
   function updateCustomerField<K extends keyof CheckoutCustomer>(
     field: K,
     value: CheckoutCustomer[K],
@@ -164,6 +182,11 @@ export default function CheckoutPage() {
   async function handlePreparePayment() {
     if (!hydrated || itemCount === 0) {
       setCheckoutError("Your cart is empty. Add products before continuing to payment.");
+      return;
+    }
+
+    if (!isLoaded || !isSignedIn) {
+      setCheckoutError("Please sign in to continue to checkout.");
       return;
     }
 
@@ -227,6 +250,22 @@ export default function CheckoutPage() {
           securely with card, Apple Pay, Google Pay, and other supported methods.
         </p>
       </div>
+
+      {requiresSignIn ? (
+        <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Sign in required</p>
+            <p className="mt-1 text-amber-800 dark:text-amber-200">
+              Please sign in before you can pay for your order or place a purchase.
+            </p>
+          </div>
+          <SignInButton mode="modal">
+            <button className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500">
+              Sign in to continue
+            </button>
+          </SignInButton>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-6">
@@ -398,11 +437,20 @@ export default function CheckoutPage() {
                 Browse products
               </Link>
             </div>
+          ) : requiresSignIn ? (
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              >
+                Sign in to continue
+              </button>
+            </SignInButton>
           ) : (
             <button
               type="button"
               onClick={handlePreparePayment}
-              disabled={!hydrated || itemCount === 0 || !isCustomerReady || isPreparingPayment}
+              disabled={!hydrated || !isLoaded || !isSignedIn || itemCount === 0 || !isCustomerReady || isPreparingPayment}
               className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPreparingPayment

@@ -44,6 +44,14 @@ export async function POST(req: Request) {
 
     const { items, customer } = parsed.data;
     const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Please sign in to continue to checkout." },
+        { status: 401 },
+      );
+    }
+
     const supabase = createAdminClient();
 
     const productIds = [...new Set(items.map((item) => item.productId))];
@@ -112,13 +120,14 @@ export async function POST(req: Request) {
         customer_email: customer.email,
         delivery_method: shippingOption.id,
         item_count: String(items.length),
+        user_id: userId,
       },
     });
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
-        user_id: userId ?? null,
+        user_id: userId,
         status: "pending",
         payment_status: "pending",
         fulfillment_status: "unfulfilled",

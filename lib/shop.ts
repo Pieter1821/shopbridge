@@ -232,11 +232,14 @@ export async function getProductBySlug(slug: string): Promise<StorefrontProduct 
   return (product.images ?? []).length > 0 ? product : null;
 }
 
-export async function searchStoreProducts(query: string): Promise<StorefrontProduct[]> {
+export async function searchStoreProducts(query: string, limit?: number): Promise<StorefrontProduct[]> {
   const trimmed = query.trim();
+  const normalizedLimit =
+    typeof limit === "number" ? Math.min(Math.max(Math.trunc(limit), 1), 24) : undefined;
 
   if (!trimmed) {
-    return getAllProducts();
+    const products = await getAllProducts();
+    return normalizedLimit ? products.slice(0, normalizedLimit) : products;
   }
 
   const supabase = await getSupabase();
@@ -245,16 +248,54 @@ export async function searchStoreProducts(query: string): Promise<StorefrontProd
     return [];
   }
 
-  const safeQuery = trimmed.replace(/[%,'()]/g, " ");
-  const { data, error } = await supabase
+  const safeQuery = trimmed.replace(/[%,'()]/g, " ").replace(/\s+/g, " ").trim();
+  const tokens = Array.from(new Set(safeQuery.split(" ").filter(Boolean))).slice(0, 5);
+
+  let textSearchQuery = supabase
     .from("products")
     .select(productSelect)
     .eq("is_active", true)
-    .or(
-      `name.ilike.%${safeQuery}%,brand.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`,
-    )
+    .textSearch("fts", safeQuery, { type: "websearch", config: "english" })
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (normalizedLimit) {
+    textSearchQuery = textSearchQuery.limit(normalizedLimit);
+  }
+
+  const { data: textSearchData, error: textSearchError } = await textSearchQuery;
+  const textSearchResults = filterMerchandisedProducts(
+    normalizeProducts(textSearchData as RawStorefrontProduct[] | null),
+  );
+
+  if (!textSearchError && textSearchResults.length > 0) {
+    return textSearchResults;
+  }
+
+  if (!tokens.length) {
+    return [];
+  }
+
+  const orFilters = tokens.flatMap((token) => [
+    `name.ilike.%${token}%`,
+    `brand.ilike.%${token}%`,
+    `description.ilike.%${token}%`,
+    `slug.ilike.%${token}%`,
+  ]);
+
+  let fallbackQuery = supabase
+    .from("products")
+    .select(productSelect)
+    .eq("is_active", true)
+    .or(orFilters.join(","))
+    .order("is_featured", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (normalizedLimit) {
+    fallbackQuery = fallbackQuery.limit(normalizedLimit);
+  }
+
+  const { data, error } = await fallbackQuery;
 
   if (error) {
     console.error("Failed to search products", error.message);

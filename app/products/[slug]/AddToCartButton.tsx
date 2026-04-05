@@ -12,8 +12,9 @@ export function AddToCartButton({ product }: { product: StorefrontProduct }) {
     (state) => state.items.find((item) => item.productId === product.id)?.quantity ?? 0,
   );
   const [added, setAdded] = useState(false);
-  const isSoldOut = product.stock_quantity === 0;
-  const hasReachedStockLimit = cartQuantity >= product.stock_quantity && product.stock_quantity > 0;
+  const availableStock = Math.max(0, product.stock_quantity - cartQuantity);
+  const isSoldOut = availableStock === 0;
+  const hasReachedStockLimit = cartQuantity > 0 && availableStock === 0 && product.stock_quantity > 0;
 
   return (
     <button
@@ -37,12 +38,12 @@ export function AddToCartButton({ product }: { product: StorefrontProduct }) {
     >
       <ShoppingBag className="h-4 w-4" />
       {isSoldOut
-        ? "Currently sold out"
-        : hasReachedStockLimit
-          ? "Max stock in cart"
-          : added
-            ? "Added to cart"
-            : "Add to cart"}
+        ? hasReachedStockLimit
+          ? "All stock in cart"
+          : "Currently sold out"
+        : added
+          ? "Added to cart"
+          : "Add to cart"}
     </button>
   );
 }
