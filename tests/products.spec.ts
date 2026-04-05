@@ -33,6 +33,13 @@ test.describe('Products Page', () => {
       await page.waitForLoadState('networkidle');
       const newUrl = page.url();
       expect(newUrl).not.toBe(initialUrl);
+
+      // Verify previous button can navigate back
+      if (await prevButton.isVisible()) {
+        await prevButton.click();
+        await page.waitForLoadState('networkidle');
+        expect(page.url()).toBe(initialUrl);
+      }
     }
   });
 

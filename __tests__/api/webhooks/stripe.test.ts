@@ -39,13 +39,15 @@ describe("POST /api/webhooks/stripe", () => {
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_test");
 
     const { getStripe } = await import("@/lib/stripe");
-    vi.mocked(getStripe).mockReturnValue({
+    const stripeMock = {
       webhooks: {
-        constructEvent: vi.fn().mockImplementation(() => {
+        constructEvent: vi.fn(() => {
           throw new Error("Invalid signature");
         }),
       },
-    } as ReturnType<typeof getStripe>);
+    };
+
+    vi.mocked(getStripe).mockReturnValue(stripeMock as unknown as ReturnType<typeof getStripe>);
 
     const req = new Request("http://localhost:3000/api/webhooks/stripe", {
       method: "POST",

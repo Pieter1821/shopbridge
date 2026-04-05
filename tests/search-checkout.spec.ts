@@ -33,8 +33,10 @@ test.describe('Search Page', () => {
       const initialCount = await page.locator('[data-testid="search-result"]').count();
       await priceFilter.fill('100');
       await page.waitForLoadState('networkidle');
-      // Just verify page updated
+      // Verify page updated and result count reflects filter
       await expect(page).toHaveURL(/search/);
+      const newCount = await page.locator('[data-testid="search-result"]').count();
+      expect(newCount).toBeLessThanOrEqual(initialCount);
     }
   });
 });

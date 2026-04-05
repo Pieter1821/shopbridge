@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, type Mock } from "vitest";
 import { POST } from "@/app/api/webhooks/clerk/route";
 
 vi.mock("@/lib/supabase/admin");
@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   headers: async () => mockHeaders,
 }));
 
-let mockWebhookVerify: () => unknown;
+let mockWebhookVerify: Mock;
 vi.mock("svix", () => ({
   Webhook: class {
     constructor() {}
